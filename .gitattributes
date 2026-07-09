@@ -1,0 +1,12 @@
+# Normalize line endings: LF in the repo and working tree for everything except
+# Windows-specific files. Keeps Docker builds, hashes, and CI deterministic across
+# the Windows dev host and Linux runtime.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets
+*.png binary
+*.gif binary
+*.ico binary
+*.woff2 binary

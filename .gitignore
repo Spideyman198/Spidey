@@ -1,0 +1,36 @@
+# Environments & secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# Node / frontend (from M12)
+node_modules/
+frontend/dist/
+
+# Generated
+evaluation/reports/
+docs/api/.openapi-tmp.json
+*.sbom.json
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local data volumes (compose bind fallbacks)
+.data/
