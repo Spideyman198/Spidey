@@ -1,0 +1,60 @@
+name: Evals
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 3 * * *" # nightly T2
+
+permissions:
+  contents: read
+
+jobs:
+  t1-smoke:
+    # Deterministic and LLM-free by design (docs/10-evaluation.md §4): fixture
+    # replays + stub-model suites only. Keeps PR CI fast, free, and non-flaky.
+    name: T1 smoke (deterministic, no LLM)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    defaults:
+      run: { working-directory: backend }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { python-version: "3.12" }
+      - run: uv sync --group dev
+      - run: uv run python -m spidey.evaluation run --tier t1 --check-baselines
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report-t1
+          path: evaluation/reports/
+          if-no-files-found: ignore
+
+  t2-nightly:
+    # Budgeted live-model suites. Skips cleanly on forks / when no provider key
+    # is configured — a missing secret must never fail the schedule.
+    name: T2 nightly (live model, budgeted)
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    defaults:
+      run: { working-directory: backend }
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { python-version: "3.12" }
+      - run: uv sync --group dev
+      - name: Run T2 (skips if no provider key)
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::notice::No provider key configured — T2 skipped."
+            exit 0
+          fi
+          uv run python -m spidey.evaluation run --tier t2 --check-baselines
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report-t2
+          path: evaluation/reports/
+          if-no-files-found: ignore

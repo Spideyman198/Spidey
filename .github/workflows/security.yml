@@ -1,0 +1,91 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 4 * * 1" # weekly full pass, Monday 04:17 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret scan (full history)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast:
+    name: SAST (bandit + semgrep)
+    runs-on: ubuntu-24.04
+    defaults:
+      run: { working-directory: backend }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { python-version: "3.12" }
+      - run: uv sync --group dev
+      - name: Bandit
+        run: uv run bandit -r src -c pyproject.toml -ll
+      - name: Semgrep (project invariant rules + community python)
+        run: |
+          uv run --with semgrep semgrep scan \
+            --config ../infra/policy/semgrep \
+            --config p/python \
+            --error --metrics=off
+
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    defaults:
+      run: { working-directory: backend }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { python-version: "3.12" }
+      - name: pip-audit against the lockfile
+        run: |
+          uv export --frozen --no-emit-project --format requirements.txt -o requirements-audit.txt
+          uv run --with pip-audit pip-audit -r requirements-audit.txt --strict
+
+  containers-and-config:
+    name: Trivy (filesystem + IaC)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+  policy:
+    name: OPA/Conftest (infra policy)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conftest on Dockerfiles and compose
+        uses: docker://openpolicyagent/conftest:v0.56.0
+        with:
+          args: >-
+            test --policy infra/policy/conftest
+            infra/Dockerfile.backend deploy/compose/docker-compose.yml
+
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          artifact-name: spidey-sbom.cdx.json
