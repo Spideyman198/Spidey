@@ -19,7 +19,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: DavidAnson/markdownlint-cli2-action@v19
+      # v24 runs on Node 24; v19 triggered the runner's Node 20 deprecation notice.
+      - uses: DavidAnson/markdownlint-cli2-action@v24
         with:
           globs: |
             **/*.md
