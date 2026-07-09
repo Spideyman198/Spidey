@@ -23,8 +23,9 @@ repos:
     hooks:
       - id: gitleaks
 
+  # Keep in lockstep with .github/workflows/docs.yml and the Makefile docs target.
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.17.2
+    rev: v0.23.0
     hooks:
       - id: markdownlint-cli2
 

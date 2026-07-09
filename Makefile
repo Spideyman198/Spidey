@@ -60,8 +60,8 @@ eval: ## Run evaluation suites (TIER=t1|t2|t3, default t1)
 openapi: ## Export the OpenAPI spec to docs/api/openapi.json
 	cd backend && $(UV) run python ../scripts/export_openapi.py ../docs/api/openapi.json
 
-docs: ## Lint documentation locally
-	npx --yes markdownlint-cli2 "**/*.md" "!**/node_modules/**" "!backend/.venv/**"
+docs: ## Lint documentation locally (same pinned version as CI and pre-commit)
+	npx --yes markdownlint-cli2@0.23.0 "**/*.md" "!**/node_modules/**" "!backend/.venv/**"
 
 clean: ## Remove caches and build artifacts
 	rm -rf backend/.pytest_cache backend/.ruff_cache backend/htmlcov backend/coverage.xml
