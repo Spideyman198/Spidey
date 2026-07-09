@@ -1,9 +1,9 @@
 # Default owner for everything
-* @kinan-alrefai
+* @Spideyman198
 
 # Security-critical areas — flagged for extra review scrutiny even solo
-/backend/src/spidey/platform/security/ @kinan-alrefai
-/backend/src/spidey/execution/ @kinan-alrefai
-/infra/policy/ @kinan-alrefai
-/.github/workflows/ @kinan-alrefai
-/docs/adr/ @kinan-alrefai
+/backend/src/spidey/platform/security/ @Spideyman198
+/backend/src/spidey/execution/ @Spideyman198
+/infra/policy/ @Spideyman198
+/.github/workflows/ @Spideyman198
+/docs/adr/ @Spideyman198
