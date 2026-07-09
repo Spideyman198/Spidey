@@ -27,12 +27,14 @@ resource-limited.
 Requirements are numbered for traceability; milestones (doc 04) reference these IDs.
 
 ### FR-1 Workspace & ingestion
+
 - **FR-1.1** Ingest a repository from a local path or a GitHub URL (clone via token) into a managed workspace.
 - **FR-1.2** Workspaces are isolated per session/project; all file access is confined to the workspace root (allow-list, path-traversal safe).
 - **FR-1.3** Incremental re-ingestion: detect changed files (git diff / content hash) and re-index only those.
 - **FR-1.4** Respect ignore rules (`.gitignore`, binary/large-file exclusion, configurable size caps).
 
 ### FR-2 Code intelligence
+
 - **FR-2.1** Parse source with Tree-sitter for at minimum: Python, TypeScript/JavaScript, Go, Java, Rust (grammar set is pluggable).
 - **FR-2.2** Extract symbols (functions, classes, methods, imports, call references) into a structured index.
 - **FR-2.3** Chunk code along syntactic boundaries (not fixed windows) and embed chunks into Qdrant.
@@ -42,6 +44,7 @@ Requirements are numbered for traceability; milestones (doc 04) reference these 
 - **FR-2.7** *Eval-gated v2:* cross-encoder reranking and context compression — adopted only if the retrieval eval suite proves the gain (see FR-8).
 
 ### FR-3 Agent system
+
 - **FR-3.1** Orchestrated multi-agent runtime (LangGraph): Planner, Coder, Reviewer, Tester, Debugger, Documenter, Terminal agents with a supervising orchestrator.
 - **FR-3.2** Planner decomposes a user goal into an editable, persisted task plan.
 - **FR-3.3** Coder edits files only through audited, validated tools (no free-form shell for edits).
@@ -51,18 +54,21 @@ Requirements are numbered for traceability; milestones (doc 04) reference these 
 - **FR-3.7** Every agent step is a typed tool call — recorded, replayable, and attributable.
 
 ### FR-4 Execution & delivery
+
 - **FR-4.1** All command execution happens inside ephemeral Docker sandboxes: no network by default, CPU/memory/PID/time limits, non-root, workspace-only mount.
 - **FR-4.2** Command allow-list with parameter validation; anything outside the list requires explicit human approval.
 - **FR-4.3** Git integration: branch-per-run, atomic commits with structured messages, diff inspection.
 - **FR-4.4** Pull request generation on GitHub (title, description, test evidence) — only after human approval.
 
 ### FR-5 Memory & persistence
+
 - **FR-5.1** Conversation memory: full message history per session, with token-budgeted context assembly (summarization of older turns).
 - **FR-5.2** Session persistence: a run can be stopped and resumed from a durable checkpoint (LangGraph checkpointer in PostgreSQL).
 - **FR-5.3** Long-term memory with explicit typed components — working, conversation, repository, semantic, procedural, episodic, evaluation — each with defined ownership, retention, indexing, and lifecycle ([07-memory.md](07-memory.md)); stored with provenance, recalled semantically, user-inspectable and deletable.
 - **FR-5.4** Gated memory writes: only the end-of-run distillation step (or explicit user request) may write long-term memory, through a validation gate (PII scrub, injection scan, scope check).
 
 ### FR-6 Interaction
+
 - **FR-6.1** Streaming responses (tokens, tool events, plan updates) to the client in real time.
 - **FR-6.2** Human approval gates: destructive actions (out-of-allow-list commands, force operations, PR creation, file deletion outside plan) pause the graph until approve/reject.
 - **FR-6.3** REST API (versioned, OpenAPI) + React/TypeScript web UI: chat, plan view, diff viewer, approval inbox, run timeline.
@@ -70,14 +76,17 @@ Requirements are numbered for traceability; milestones (doc 04) reference these 
 - **FR-6.5** Real-time agent dashboard: active runs, execution graph state, tool usage, progress, safe reasoning summaries (never raw chain-of-thought), token/latency/cost, failures — driven by the same event stream as the historical timeline.
 
 ### FR-7 Replay
+
 - **FR-7.1** Every run is replayable: prompts, responses, tool invocations, events, diffs, token usage, latency, costs, and failures are captured (redacted at capture) — [08-events-and-replay.md](08-events-and-replay.md).
 - **FR-7.2** Three replay modes: timeline reconstruction (UI), golden re-execution with recorded fixtures (CI regression), comparative re-run under new config (evaluation).
 
 ### FR-8 Evaluation
+
 - **FR-8.1** Evaluation framework from M0, in CI: codegen pass@k, retrieval precision/recall/MRR, agent-task success rate, groundedness/hallucination, safety (injection corpus), latency, token and cost tracking — [10-evaluation.md](10-evaluation.md).
 - **FR-8.2** Tiered CI: deterministic LLM-free smoke on every PR; budgeted live suites nightly and at release; baselines updated only by reviewed re-bless commits.
 
 ### FR-9 Model providers
+
 - **FR-9.1** Provider-portable model layer: OpenAI, Anthropic, Gemini, Ollama, vLLM, Azure OpenAI — switching and per-role routing (planner vs summarizer models) is configuration only, verified by adapter conformance tests ([ADR-0012](adr/0012-model-provider-registry.md)).
 
 ## 4. Non-functional requirements
@@ -96,10 +105,12 @@ Requirements are numbered for traceability; milestones (doc 04) reference these 
 ## 5. Security requirements & threat model
 
 ### Assets
+
 Workspace source code, user credentials/tokens (GitHub PAT, LLM API keys), conversation/memory data,
 the host machine itself.
 
 ### Threat actors
+
 Malicious repository content (the primary one — the agent *reads and executes* untrusted code),
 malicious/compromised users, network attackers, compromised dependencies.
 

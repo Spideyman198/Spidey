@@ -52,32 +52,37 @@ MCP; commodity capabilities are consumed from MCP.**
 
 ## 4. Consuming (external MCP servers)
 
-**Discovery & registration**
+### Discovery & registration
+
 - Static, reviewed config (`mcp_servers.yaml`): transport, command/URL, credential reference,
   trust tier, enabled tool allow-list. No auto-discovery — a new server is a config change with
   review, by design.
 - On mount: `initialize` handshake → `tools/list` → schema validation → tools registered under a
   server namespace (`github.search_issues`), eliminating name collisions and shadowing.
 
-**Tool-definition pinning (rug-pull defense)**
+### Tool-definition pinning (rug-pull defense)
+
 - The tool list + schemas + descriptions are hashed at first mount and pinned in config. On drift
   (server update changes a description or schema), the server's tools are disabled and an operator
   alert fires until the new hash is re-approved. Malicious description swaps after trust is
   established are a documented MCP attack; this closes it.
 
-**Description sanitization (tool-poisoning defense)**
+### Description sanitization (tool-poisoning defense)
+
 - Descriptions from `untrusted` servers are stripped of imperative/injection patterns before
   entering any prompt, length-capped, and rendered inside the same inert data frames as retrieved
   content.
 
-**Authentication**
+### Authentication
+
 - stdio servers are child processes launched with a **scrubbed environment** — only the specific
   variables the server needs, injected from the secret store; no host env inheritance.
 - HTTP servers: OAuth 2.1 / bearer per the MCP auth spec, credentials envelope-encrypted at rest.
 - Sandbox-adjacent rule: MCP server processes never receive Spidey's own API keys, DB URLs, or the
   Docker socket.
 
-**Runtime containment**
+### Runtime containment
+
 - Per-server budgets: invocation rate, concurrent calls, response-size caps, timeouts.
 - Outputs from `untrusted`/`verified` servers are treated as hostile input: data-framed,
   secret-scanned, size-capped before entering agent context.

@@ -3,11 +3,13 @@
 **Status:** Accepted · 2026-07-09
 
 ## Context
+
 The agent must run commands and tests on **untrusted repositories** (FR-4.1) — the highest-risk
 capability in the system. Threats: host compromise via malicious build scripts, secret exfiltration,
 resource exhaustion, lateral movement.
 
 ## Decision
+
 Every execution gets a fresh container from a hardened image: network `none` by default, non-root
 fixed UID, read-only rootfs + tmpfs, single RW bind mount of the workspace copy, cgroup
 CPU/memory/PID limits, wall-clock timeout, bounded captured output, scrubbed environment. Managed
@@ -16,6 +18,7 @@ typed-arg allow-list; off-list or network-enabled runs require human approval). 
 mounts the Docker socket into sandboxes.
 
 ## Alternatives considered
+
 - **gVisor / Firecracker microVMs** — stronger isolation (kernel attack surface), but heavy setup
   and poor Windows-dev-host ergonomics; the `Sandbox` port makes this a planned upgrade path
   (post-v1), not a redesign. Deferred.
@@ -25,6 +28,7 @@ mounts the Docker socket into sandboxes.
   egress of user code. Rejected for v1.
 
 ## Consequences
+
 - (+) Strong practical isolation at library-level implementation cost; per-execution disposability
   makes state contamination between runs impossible.
 - (−) Container escape via kernel vulnerabilities remains the residual risk — documented in the risk

@@ -83,7 +83,7 @@ Every run is reconstructable and re-executable from what we store:
 | Token usage / latency / cost | `token_usage` + event attributes | aggregable per run/session/model |
 | Failures | RunFailed payloads + linked traces | exception class, node, budget state |
 
-**Replay modes**
+### Replay modes
 
 1. **Timeline reconstruction** — deterministic re-render of any run in the UI from `run_events`
    (this is also just how the dashboard works for live runs; live and historical views are the same

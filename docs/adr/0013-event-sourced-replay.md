@@ -3,11 +3,13 @@
 **Status:** Accepted · 2026-07-09
 
 ## Context
+
 Every execution must be replayable: prompts, responses, tool invocations, events, diffs, token
 usage, latency, costs, failures. Replay serves three masters: debugging ("why did it do that?"),
 regression testing (behavioral drift gates in CI), and the dashboard/timeline UI.
 
 ## Decision
+
 Runs are **event-sourced as a byproduct of ADR-0011**: the persisted `run_events` stream is the
 replay spine. Large bodies (prompts/responses in `llm_interactions`, diffs, tool outputs,
 artifacts) are stored **content-addressed (SHA-256)** on a local volume behind an `ArtifactStore`
@@ -20,6 +22,7 @@ bodies expire on a retention window (default 30 days); events, episodic summarie
 kept.
 
 ## Alternatives considered
+
 - **Full event-sourcing as the write model** (state = fold(events)) — maximal purity; makes every
   CRUD path harder and the ORM an enemy. Rejected: we event-source the *run narrative*, not the
   application's entire state.
@@ -31,6 +34,7 @@ kept.
   retention. Rejected.
 
 ## Consequences
+
 - (+) Replay, timeline, audit, and eval fixtures are one storage design, not four features.
 - (+) Content addressing dedupes repeated prompts/diffs across runs materially.
 - (−) Capture-time redaction means unredacted data is unrecoverable by design — accepted: that is

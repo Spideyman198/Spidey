@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-07-09 · Supersedes [ADR-0008](0008-mcp-strategy.md)
 
 ## Context
+
 ADR-0008 treated MCP as an optional integration bolted onto a proprietary tool registry. The design
 review elevated the requirement: MCP should be the architectural contract of the tool plane, with
 pluggable servers (filesystem, git, GitHub, Docker, terminal, browser, PostgreSQL, custom) — while
@@ -10,6 +11,7 @@ security invariants (path allow-lists, command policy, approval gates) must rema
 bypass through any transport.
 
 ## Decision
+
 The tool plane is **MCP-shaped end to end**: ToolSpecs use MCP-compatible schemas/annotations; the
 `ToolRegistry` is the single invocation choke point; providers are either **native in-process**
 (filesystem, git, terminal/sandbox, GitHub-write — the security-critical set) or **mounted MCP
@@ -20,6 +22,7 @@ drift alarms**, description sanitization, trust tiers, scrubbed-env child proces
 budgets and circuit breakers. Full design: [docs/05-tooling-and-mcp.md](../05-tooling-and-mcp.md).
 
 ## Alternatives considered
+
 - **All tools as external MCP servers (maximal MCP)** — architecturally pure, but moves
   `SafeFileSystem` and `CommandPolicy` out of process, turning our security invariants into network
   trust assumptions, and adds serialization latency to the hottest path. Rejected: security-critical
@@ -28,6 +31,7 @@ budgets and circuit breakers. Full design: [docs/05-tooling-and-mcp.md](../05-to
   shapes to maintain. Superseded.
 
 ## Consequences
+
 - (+) One contract serves native tool-calling, MCP serving, and MCP consumption; new capability =
   config, not platform code.
 - (+) Security review has exactly one choke point to audit.

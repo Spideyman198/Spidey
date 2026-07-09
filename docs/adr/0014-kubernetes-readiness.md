@@ -3,12 +3,14 @@
 **Status:** Accepted · 2026-07-09
 
 ## Context
+
 v1 ships on Docker Compose (single-host, portfolio-runnable), but the architecture must be
 deployable to Kubernetes without redesign: Helm charts, config/secrets strategy, ingress,
 autoscaling. The hard part is not the stateless services — it is the sandbox, whose v1 adapter
 drives the host Docker socket (unavailable/unacceptable on K8s).
 
 ## Decision
+
 - **K8s-readiness as M0 design constraints:** 12-factor env-only config, stateless API, health +
   readiness endpoints, graceful shutdown (SIGTERM drains SSE and Celery), one image many roles,
   migrations as a separate step — these cost nothing now and make Helm mechanical.
@@ -22,6 +24,7 @@ drives the host Docker socket (unavailable/unacceptable on K8s).
   runtimeClass as the isolation upgrade. No Docker socket mounts, no DinD, ever.
 
 ## Alternatives considered
+
 - **K8s from day one** — deployment complexity taxes every milestone and the reviewer quickstart
   (`docker compose up` is the portfolio's front door). Rejected.
 - **Compose-only, K8s "someday"** — the sandbox fork proves this postpones a real architectural
@@ -30,6 +33,7 @@ drives the host Docker socket (unavailable/unacceptable on K8s).
   unconditionally.
 
 ## Consequences
+
 - (+) The only K8s-specific application code is one Sandbox adapter; everything else is packaging.
 - (+) KEDA-on-queue-depth documents a correct autoscaling story rather than the reflexive CPU HPA.
 - (−) Helm chart is deferred value: nothing validates it until M14 → mitigated by kind-based chart

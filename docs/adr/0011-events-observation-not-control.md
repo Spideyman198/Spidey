@@ -3,13 +3,16 @@
 **Status:** Accepted · 2026-07-09
 
 ## Context
+
 The design review proposed event-driven internal architecture (Planner → TaskCreated,
 Coder → CodeGenerated, …). Taken literally — agents reacting to each other's events — this would
 replace LangGraph edges with choreography. We already committed to LangGraph precisely for durable,
 interruptible, replayable control flow (ADR-0002).
 
 ## Decision
+
 Split by intent:
+
 - **Control flow** (what happens next in a run): LangGraph edges. Synchronous, checkpointed,
   interruptible, explicitly diagrammable.
 - **Facts** (what happened): domain events (`TaskCreated`, `CodeGenerated`, `ReviewCompleted`,
@@ -22,6 +25,7 @@ Contracts: versioned Pydantic envelopes with OTel correlation; at-least-once del
 consumers. Full design: [docs/08-events-and-replay.md](../08-events-and-replay.md).
 
 ## Alternatives considered
+
 - **Full choreography (agents react to events)** — implicit execution order, no single place to see
   or checkpoint the flow, interrupts and budgets become distributed problems. Rejected: it
   re-implements the hard parts of LangGraph, badly.
@@ -31,6 +35,7 @@ consumers. Full design: [docs/08-events-and-replay.md](../08-events-and-replay.m
   scale; Redis is already present. Rejected; the outbox pattern means the transport is swappable.
 
 ## Consequences
+
 - (+) Replay, audit, timeline, dashboard, and eval capture all fall out of one event spine.
 - (+) The agent graph stays debuggable as a graph.
 - (−) Dual-write discipline (state + outbox in one transaction) must be enforced — Semgrep rule +

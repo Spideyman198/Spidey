@@ -3,12 +3,14 @@
 **Status:** Accepted · 2026-07-09 · Extends [ADR-0009](0009-llm-gateway.md)
 
 ## Context
+
 ADR-0009 established the first-party gateway with an Anthropic-first adapter. The design review
 requires provider portability across OpenAI, Anthropic, Gemini, Ollama, vLLM, and Azure OpenAI,
 switchable by configuration only — and reaffirms **provider abstraction over framework
 abstraction** (no LangChain model wrappers as the seam).
 
 ## Decision
+
 A **provider registry** behind the existing `ChatModel`/`Embedder` ports:
 
 - **Adapters (3 cover 6 targets):** `anthropic` (native SDK) · `openai-compatible` (one adapter,
@@ -26,6 +28,7 @@ A **provider registry** behind the existing `ChatModel`/`Embedder` ports:
   written once, applies to every provider.
 
 ## Alternatives considered
+
 - **LangChain chat-model classes as the abstraction** — broad coverage but hides retry/usage/raw
   streaming knobs we must own; framework churn becomes our churn (reaffirming ADR-0009). Rejected.
 - **LiteLLM (library or proxy)** — genuinely good routing coverage; still deferred: another
@@ -35,6 +38,7 @@ A **provider registry** behind the existing `ChatModel`/`Embedder` ports:
   OpenAI dialect. Rejected for the parameterized adapter.
 
 ## Consequences
+
 - (+) Local/self-hosted story (Ollama, vLLM) comes free with the OpenAI-compatible adapter —
   air-gapped demos and cost-free CI canaries.
 - (+) Model choice becomes an eval-driven config decision per role (doc 10 gates routing changes).

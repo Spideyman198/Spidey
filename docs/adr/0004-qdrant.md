@@ -3,11 +3,13 @@
 **Status:** Accepted · 2026-07-09
 
 ## Context
+
 Semantic search (FR-2.3/2.4) and memory recall (FR-5.3) need vector similarity search with rich
 payload filtering (language, path prefix, symbol kind, workspace), incremental upserts keyed by
 chunk identity, and snapshot/restore — self-hosted in Docker.
 
 ## Decision
+
 Qdrant, one collection per concern (`code_chunks`, `memories`), payload-indexed filters, accessed
 through a `VectorIndex` port.
 
@@ -18,6 +20,7 @@ Elasticsearch (fourth stateful service) and Postgres FTS (not BM25-ranked, weak 
 were rejected. Retrieval flow: [docs/06-retrieval.md](../06-retrieval.md).
 
 ## Alternatives considered
+
 - **pgvector** — seductive consolidation into Postgres (see ADR-0003's logic), but at our scale
   (100k+ chunks × multiple workspaces) HNSW tuning, filtered-search performance, and index rebuild
   ergonomics are markedly better in a dedicated engine; and vector load competing with OLTP inside
@@ -28,6 +31,7 @@ were rejected. Retrieval flow: [docs/06-retrieval.md](../06-retrieval.md).
 - **Pinecone/Weaviate Cloud** — managed SaaS conflicts with self-hosted/air-gapped posture. Rejected.
 
 ## Consequences
+
 - (+) Strong filtered ANN performance, clean Python client, Docker-native, snapshotable.
 - (−) A third stateful service — accepted deliberately here (unlike ADR-0003) because vector search
   is a core workload with real performance requirements, not an auxiliary structure.
