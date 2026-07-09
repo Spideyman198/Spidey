@@ -1,0 +1,54 @@
+# Project invariant rules (docs/03 §rules 5–6), enforced in CI and `make security`.
+# Scanned from backend/ — paths are relative to that root. Rules for invariants
+# whose home context doesn't exist yet (outbox discipline at M6) are added with
+# that context.
+rules:
+  - id: spidey-no-subprocess-shell
+    languages: [python]
+    severity: ERROR
+    message: >
+      Shell interpolation is banned platform-wide (SEC-CMD): execute argv arrays,
+      and only through the execution context's Sandbox/CommandPolicy adapters.
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$FUNC(..., shell=True, ...)
+          - pattern: os.system(...)
+          - pattern: os.popen(...)
+    paths:
+      include: ["src"]
+
+  - id: spidey-no-dynamic-code
+    languages: [python]
+    severity: ERROR
+    message: eval/exec on any string is banned — no dynamic code execution paths.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+    paths:
+      include: ["src"]
+
+  - id: spidey-no-requests-library
+    languages: [python]
+    severity: ERROR
+    message: >
+      Use httpx via the composition root (explicit timeouts, no redirects by
+      default). The requests library bypasses those defaults.
+    pattern: import requests
+    paths:
+      include: ["src"]
+
+  - id: spidey-agents-no-direct-file-io
+    languages: [python]
+    severity: ERROR
+    message: >
+      Agent and code-intelligence code must access files through the workspaces
+      SafeFileSystem port (SEC-FS) — never the filesystem directly.
+    pattern-either:
+      - pattern: open(...)
+      - pattern: $P.open(...)
+      - pattern: $P.read_text(...)
+      - pattern: $P.write_text(...)
+      - pattern: $P.read_bytes(...)
+      - pattern: $P.write_bytes(...)
+    paths:
+      include: ["src/spidey/agents", "src/spidey/codeintel"]

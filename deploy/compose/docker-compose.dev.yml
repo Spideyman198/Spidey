@@ -1,0 +1,26 @@
+# Dev overrides: hot reload for the API, published database ports for local
+# tooling (bound to loopback only). Never use in any shared environment.
+services:
+  api:
+    command: >
+      sh -c "alembic upgrade head &&
+             exec uvicorn spidey.api.main:create_app --factory
+             --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src"
+    volumes:
+      - ../../backend/src:/app/src:ro
+
+  worker:
+    volumes:
+      - ../../backend/src:/app/src:ro
+
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  qdrant:
+    ports:
+      - "127.0.0.1:6333:6333"
