@@ -22,6 +22,17 @@ exporters:
       insecure: true # collector→jaeger stays on the isolated compose network
 
 service:
+  telemetry:
+    metrics:
+      # Collector self-metrics for the Prometheus scrape job. Defaults bind to
+      # localhost (unreachable across containers); 0.0.0.0 here stays inside
+      # the isolated compose network — the port is never published to the host.
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
   pipelines:
     traces:
       receivers: [otlp]

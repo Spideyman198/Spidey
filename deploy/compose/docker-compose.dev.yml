@@ -2,10 +2,11 @@
 # tooling (bound to loopback only). Never use in any shared environment.
 services:
   api:
+    # Same-indent continuations only — see the note on the base api command.
     command: >
       sh -c "alembic upgrade head &&
-             exec uvicorn spidey.api.main:create_app --factory
-             --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src"
+      exec uvicorn spidey.api.main:create_app --factory --host 0.0.0.0 --port 8000
+      --reload --reload-dir /app/src"
     volumes:
       - ../../backend/src:/app/src:ro
 

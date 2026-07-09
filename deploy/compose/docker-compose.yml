@@ -27,9 +27,11 @@ x-app-hardening: &app-hardening
 services:
   api:
     <<: [*app-build, *app-hardening]
+    # NB: keep all continuation lines at the SAME indent as the first — more-indented
+    # lines in a folded scalar keep their newlines and silently truncate the command.
     command: >
       sh -c "alembic upgrade head &&
-             exec uvicorn spidey.api.main:create_app --factory --host 0.0.0.0 --port 8000"
+      exec uvicorn spidey.api.main:create_app --factory --host 0.0.0.0 --port 8000"
     environment: *app-env
     ports:
       - "127.0.0.1:8000:8000"
