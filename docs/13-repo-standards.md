@@ -20,7 +20,7 @@ OpenSSF Scorecard (post-publish) · docs.
 ## 2. Community & governance files
 
 | File | Content decision |
-|---|---|
+| --- | --- |
 | `LICENSE` | **Apache-2.0.** Justification: explicit patent grant and contribution licensing (§5) matter for an AI/agents project more than MIT's brevity; NOTICE support; the license enterprises default-approve. MIT rejected as weaker on patents; GPL rejected as adoption friction contradicts portfolio goals. |
 | `CONTRIBUTING.md` | Dev setup (devcontainer + manual), branch/commit conventions (below), PR checklist mirroring the milestone Definition of Done, eval re-bless procedure, ADR process for design changes |
 | `CODE_OF_CONDUCT.md` | Contributor Covenant 2.1, contact = repo owner email |

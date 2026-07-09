@@ -54,7 +54,7 @@ and the security property defended is the B4 wall, not sandbox-interior integrit
 ## 2. AI-specific threats (STRIDE additions from this review)
 
 | Threat | Vector | Controls |
-|---|---|---|
+| --- | --- | --- |
 | **Tool poisoning / rug pull** | Malicious or updated MCP tool descriptions steering the model | Definition pinning + drift alarm, description sanitization, namespace isolation, trust tiers (doc 05 §4) |
 | **Memory poisoning** | Injected content distilled into long-term memory, persisting across sessions | Write gate (instruction-pattern scan, provenance, scope), inert framing at recall, confidence decay on failure, user-visible memory (doc 07 §3) |
 | **Retrieval poisoning** | Adversarial chunks planted in repos to hijack later searches | Index-time instruction-pattern screening → `suspect` flag, provenance data-framing at prompt time, safety eval corpus regression (docs 06 §3, 10 §2) |
@@ -65,7 +65,7 @@ and the security property defended is the B4 wall, not sandbox-interior integrit
 ## 3. Security tooling pipeline
 
 | Stage | Tool | Purpose | Gate |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | pre-commit | gitleaks | secret scan (diff) | block commit |
 | pre-commit | ruff + pyright | injection-prone patterns, type holes | block commit |
 | CI: SAST | **Bandit** | Python security anti-patterns | fail on high |

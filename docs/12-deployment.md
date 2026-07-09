@@ -41,7 +41,7 @@ where possible; the sandbox image is built locally and pinned by digest.
 ## 2. Kubernetes target
 
 | Concern | Design |
-|---|---|
+| --- | --- |
 | Workloads | `api` Deployment (HPA on CPU/latency) · `worker` Deployments per queue (**KEDA** scaling on Redis Stream/queue depth — queue depth, not CPU, is the true load signal) · `beat` single replica w/ leader election · CronJobs for cleanup |
 | State | Postgres/Redis/Qdrant via operator or managed services; charts support `external*` endpoints so prod can point at RDS-like services — **we do not pretend running databases on K8s is free** |
 | Config | Helm values → env vars; non-secret config in ConfigMaps; images identical across envs (build once, configure per env) |

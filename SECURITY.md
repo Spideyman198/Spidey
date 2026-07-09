@@ -27,7 +27,7 @@ person running the stack), and denial of service against your own self-hosted in
 ## Supported versions
 
 | Version | Supported |
-|---|---|
+| --- | --- |
 | `main` (pre-1.0 milestones) | ✅ latest milestone only |
 | < latest milestone tag | ❌ |
 

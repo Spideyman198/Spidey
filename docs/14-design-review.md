@@ -8,7 +8,7 @@ as what we did.
 ## 1. Over-engineering identified and cut (or fenced)
 
 | Candidate | Decision | Rationale |
-|---|---|---|
+| --- | --- | --- |
 | Event-driven agent control flow (item 5 as literally stated) | **Rejected** — events observe, LangGraph controls ([ADR-0011](adr/0011-events-observation-not-control.md)) | Choreography would re-implement checkpointing/interrupts implicitly and un-debuggably |
 | Runtime OPA policy engine | **Fenced to CI** (Conftest on infra files) | Runtime policies need typed context + unit tests with the code; Rego sidecar = second language + service for no v1 need |
 | Microsoft-style GraphRAG (community summaries) | **Cut**; graph-neighbor expansion only | Expensive offline pipeline aimed at corpus-thematic questions, not code-change tasks |
@@ -22,7 +22,7 @@ as what we did.
 ## 2. Hidden technical debt — surfaced and scheduled
 
 | Debt | Where it hides | Plan |
-|---|---|---|
+| --- | --- | --- |
 | Celery(sync) ↔ asyncio agent runtime seam | worker entrypoint | Contained in one helper; integration-tested for cancellation/timeout semantics (M7); revisit worker model only if it leaks |
 | LangGraph API churn | agents/graph | Version-pinned; nodes depend on our ports, not LangChain types; T2 eval gate on upgrades (ADR-0002) |
 | Tool-schema translation per provider | llm adapters | Conformance test matrix per adapter (ADR-0012); OpenAI-compatible adapter consolidates Ollama/vLLM/Azure |
@@ -33,7 +33,7 @@ as what we did.
 ## 3. Scalability bottleneck analysis
 
 | Bottleneck | Limit | Mitigation now / later |
-|---|---|---|
+| --- | --- | --- |
 | Single Redis (broker + streams + rate limits + cache) | ~10³ concurrent runs | Fine for v1 by orders of magnitude; roles are config-separable to distinct instances later |
 | Postgres write amplification (events + checkpoints + audit) | Heavy agent concurrency | Outbox batching, JSONB payloads, partitioned `run_events` by month; checkpoint compaction |
 | Qdrant memory footprint at many workspaces | RAM-bound | Per-workspace collections → shardable; quantization available; snapshots for archival |
@@ -60,7 +60,7 @@ thresholds set where they mean something (domain/application 90 %) rather than a
 ## 6. Operational risks (residual — accepted with eyes open)
 
 | Risk | Acceptance rationale |
-|---|---|
+| --- | --- |
 | Docker Desktop dependency for dev on Windows | Hard requirement documented (01 §7); devcontainer as fallback |
 | Kernel-level sandbox escape (shared kernel) | No-net + non-root + quotas make it hard; gVisor upgrade path defined; documented in risk register not hidden |
 | Cost runaway from agent loops | Triple guard: step budgets, token budgets, global circuit-breaker kill switch + cost alerts |
@@ -82,7 +82,7 @@ Final pass before freeze, focused on long-term single-maintainer viability. Outc
 architectural changes required**; five simplifications adopted:
 
 | # | Simplification | Rationale |
-|---|---|---|
+| --- | --- | --- |
 | S1 | Bounded-context packages are created **in the milestone that implements them** — no empty `domain/application/infrastructure` shells in M0 | Empty scaffolding is placeholder code by another name; doc 03 describes the *target* tree |
 | S2 | Observability services (OTel collector, Jaeger, Prometheus, Grafana) run under a compose **profile** (`obs`), on by default in `make dev`, skippable via `make dev-min` | Full stack for the demo story; fast core loop for daily development on one machine |
 | S3 | `qdrant-client` dependency deferred to M4; M0 health checks probe Qdrant over plain HTTP | A dependency should arrive with the code that uses it |

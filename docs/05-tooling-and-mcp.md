@@ -26,7 +26,7 @@ around them.
 ## 2. Provider matrix
 
 | Capability | Provider | Why this way |
-|---|---|---|
+| --- | --- | --- |
 | Filesystem | **Native** (`SafeFileSystem`) | Path allow-list, symlink escape prevention, and diff secret-scanning are our security invariants — a third-party FS server would sit outside them. Served *over* MCP, never replaced *by* an MCP server. |
 | Git (local) | **Native** (GitPython) | Branch-per-run and commit policy are business rules; same argument as filesystem. |
 | Terminal / Docker exec | **Native** (`Sandbox` + `CommandPolicy`) | The most dangerous capability in the system; the allow-list and container hardening are non-negotiable in-process code. |

@@ -8,7 +8,7 @@ not by inventing eight databases.
 ## 1. Component matrix
 
 | Component | Contents | Owner context | Store | Indexed by | Retention / lifecycle |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | **Working memory** | Current graph state: messages in flight, tool results, plan progress, budgets | `agents` | LangGraph checkpoint (Postgres) | run_id | Per run; checkpoints kept for replay window, then compacted |
 | **Conversation memory** | Full message history + rolling summaries of older turns | `memory` | Postgres | session_id, time | Per session; summaries regenerated as history grows; user-deletable |
 | **Repository memory** (LT) | Distilled facts about a repo: conventions, build quirks, layout, gotchas | `memory` | Postgres record + Qdrant embedding | workspace_id + semantic | Cross-session; refreshed on re-ingestion; invalidated when cited files change |

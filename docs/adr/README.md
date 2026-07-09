@@ -4,7 +4,7 @@ Immutable once **Accepted** — a changed decision gets a new ADR that supersede
 Format: Context → Decision → Alternatives considered → Consequences.
 
 | ADR | Title | Status |
-|---|---|---|
+| --- | --- | --- |
 | [0001](0001-modular-monolith.md) | Modular monolith with hexagonal bounded contexts | Accepted |
 | [0002](0002-langgraph-orchestration.md) | LangGraph for agent orchestration | Accepted |
 | [0003](0003-postgres-knowledge-graph.md) | Knowledge graph in PostgreSQL, not a graph DB | Accepted |

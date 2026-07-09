@@ -13,7 +13,7 @@ Implementation of a milestone starts only after explicit approval. **Nothing is 
 GitHub by tooling or the assistant — pushes/publishes are performed by the repository owner only.**
 
 | # | Milestone | Delivers |
-|---|---|---|
+| --- | --- | --- |
 | M0 | Foundations, repo standards & CI/security pipeline | NFR-6..8, doc 13 scaffolding, eval skeleton (FR-8 seed) |
 | M1 | Identity, API core, audit & sessions | SEC-IAM, SEC-WEB, FR-6.3(API) |
 | M2 | Workspaces & repository ingestion | FR-1.*, SEC-FS |

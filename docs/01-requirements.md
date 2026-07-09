@@ -17,7 +17,7 @@ resource-limited.
 ## 2. Personas & primary use cases
 
 | Persona | Use cases |
-|---|---|
+| --- | --- |
 | **Developer** | "Fix this failing test", "Add pagination to this endpoint", "Explain how auth works here", "Upgrade this dependency and fix breakage" |
 | **Tech lead / reviewer** | Reviews agent-proposed diffs, approves/rejects terminal commands and PRs, audits agent activity |
 | **Platform operator** | Deploys the stack, manages users/roles, monitors cost, latency, and failures, rotates secrets |
@@ -92,7 +92,7 @@ Requirements are numbered for traceability; milestones (doc 04) reference these 
 ## 4. Non-functional requirements
 
 | ID | Requirement | Target |
-|---|---|---|
+| --- | --- | --- |
 | NFR-1 | Availability | Single-node deployment; graceful degradation when Qdrant/Redis are down (search disabled, core chat still works) |
 | NFR-2 | Latency | First streamed token < 2 s p95 after LLM dispatch; search < 500 ms p95 on 100k-chunk index |
 | NFR-3 | Scalability | Indexing and agent runs execute on horizontally scalable Celery workers; API is stateless |
@@ -117,7 +117,7 @@ malicious/compromised users, network attackers, compromised dependencies.
 ### STRIDE summary (top risks → controls)
 
 | Threat | Vector | Controls |
-|---|---|---|
+| --- | --- | --- |
 | **Prompt injection** | Instructions embedded in repo files, issue text, search results | Content/instruction separation (retrieved text wrapped in inert data frames with provenance), tool-call allow-lists per agent role, approval gates on side effects, output filtering (SEC-PI) |
 | **Arbitrary code execution → host compromise** | Agent runs `npm install`/tests on hostile repo | All execution in ephemeral Docker sandbox: no network (default), non-root, read-only rootfs, cgroup CPU/mem/PID limits, wall-clock timeout, workspace-only bind mount (SEC-SBX) |
 | **Secret exfiltration** | Injected instructions ask agent to read env/keys | Secrets never enter agent context; sandbox env is scrubbed; secret-scanning on all agent output and diffs; egress blocked (SEC-SEC) |

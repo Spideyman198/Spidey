@@ -38,7 +38,7 @@ in the [Makefile](Makefile) and run fine in PowerShell (e.g. `python -m uv sync`
 ## Quality gates (all enforced in CI)
 
 | Gate | Command |
-|---|---|
+| --- | --- |
 | Lint + format | `make lint` (ruff check + format check) |
 | Types (strict) | `make typecheck` (pyright) |
 | Tests + coverage | `make test` (thresholds: domain/application ≥ 90 %, overall ≥ 85 %) |

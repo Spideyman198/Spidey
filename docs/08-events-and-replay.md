@@ -32,7 +32,7 @@ for producers, consumers, the TypeScript event reducer (generated), and replay.
 ## 3. Event taxonomy (core set)
 
 | Producer | Events |
-|---|---|
+| --- | --- |
 | `agents` | RunStarted, PlanCreated, **TaskCreated**, TaskStateChanged, NodeEntered/Exited, ApprovalRequested/Resolved, RunCompleted/Failed/Escalated |
 | `agents` (roles) | **CodeGenerated** (diff ref), **ReviewCompleted** (verdict), **TestsPassed/TestsFailed** (results ref), **FixGenerated** (diff ref), DocsUpdated |
 | `llm` | LlmCallCompleted (model, tokens, latency, cost, interaction ref) |
@@ -75,7 +75,7 @@ flowchart LR
 Every run is reconstructable and re-executable from what we store:
 
 | Stored | Where | Notes |
-|---|---|---|
+| --- | --- | --- |
 | Events (all of §3) | `run_events` | the spine: ordered, trace-linked |
 | Prompts & responses | `llm_interactions` + artifact store | full request/response per LLM call; secret/PII-redacted at capture; large bodies content-addressed |
 | Tool invocations | `tool_invocations` | args, result ref, side-effect class, approval linkage |

@@ -7,7 +7,7 @@ contestable decision has an [ADR](adr/README.md). Revised in the 2026-07-09 desi
 ## 0. Document map
 
 | Doc | Covers |
-|---|---|
+| --- | --- |
 | [05 Tool plane & MCP](05-tooling-and-mcp.md) | Tool registry, native vs MCP providers, discovery, auth, trust tiers |
 | [06 Retrieval](06-retrieval.md) | Hybrid search, GraphRAG scope, rerank/compression gates, indexing lifecycle |
 | [07 Memory](07-memory.md) | Eight memory components: ownership, retention, indexing, lifecycle |
@@ -98,7 +98,7 @@ historical replay render through the same event reducer — one code path, two t
 ## 4. Bounded contexts
 
 | Context | Responsibility | Key ports | Key adapters |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `platform` | Shared kernel: config, errors, logging, telemetry, security primitives, **event contracts + outbox** | `EventPublisher`, `ArtifactStore` | pydantic-settings, structlog, OTel, PG outbox, CAS volume |
 | `identity` | Users, JWT auth + refresh rotation, RBAC, rate limiting | `UserRepository`, `TokenService` | SQLAlchemy, Redis token bucket |
 | `workspaces` | Repo ingestion (local/GitHub), workspace lifecycle, safe FS, git ops, PR creation | `WorkspaceStore`, `GitProvider`, `SafeFileSystem` | GitPython, GitHub REST, path-guarded FS |
@@ -209,7 +209,7 @@ content rendered as text/code only, never `dangerouslySetInnerHTML`.
 ## 9. Technology decision summary
 
 | Decision | Choice | ADR |
-|---|---|---|
+| --- | --- | --- |
 | Architecture | Modular monolith, hexagonal contexts | [0001](adr/0001-modular-monolith.md) |
 | Orchestration | LangGraph (control flow) + domain events (facts) | [0002](adr/0002-langgraph-orchestration.md), [0011](adr/0011-events-observation-not-control.md) |
 | Knowledge graph | Postgres tables + CTEs | [0003](adr/0003-postgres-knowledge-graph.md) |

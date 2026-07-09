@@ -23,7 +23,7 @@ graphed in Grafana, compared against `baselines/` in CI.
 ## 2. Suites
 
 | Suite | What it measures | Grading | Key metrics |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **codegen** (HumanEval-style) | Isolated function synthesis | Hidden tests executed in the sandbox | **pass@1, pass@k**, tokens/task |
 | **retrieval** | Search quality on pinned repos | Golden queries → expected files/symbols | **precision@k, recall@k, MRR**, latency |
 | **agent-tasks** (SWE-bench-style) | End-to-end: issue → patch on pinned real repos | Repo's own test suite (fail→pass) in sandbox + rubric checks (scope, diff size) | **success rate**, steps/run, wall-clock, **cost/task** |
@@ -47,7 +47,7 @@ tracking reuse the LLM gateway metering — evals measure the same pipeline prod
 ## 4. CI integration (three tiers)
 
 | Tier | Trigger | Contents | Budget | Gate |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **T1 smoke** | every PR | regression-replay (fixtures, no LLM calls) + retrieval suite + unit-graded codegen subset with stub model | $0, < 5 min | hard fail on regression vs baseline |
 | **T2 nightly** | schedule | full retrieval + codegen (live model) + agent-tasks subset + groundedness + safety corpus | capped $ budget, alerts on overrun | trend report; auto-issue on metric drop > threshold |
 | **T3 release** | tag / manual | everything incl. full agent-tasks + comparative re-runs vs previous release | approved budget | release checklist item |

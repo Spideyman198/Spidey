@@ -25,7 +25,7 @@ flowchart LR
 ## 2. What every service exports
 
 | Service | Traces | Metrics (Prometheus) | Logs |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **API** | HTTP server spans (route, status), DB/Redis client spans, SSE session spans | `http_request_duration_seconds{route,method,code}`, `http_requests_in_flight`, `rate_limit_rejections_total`, `sse_active_streams` | request logs with trace_id, auth events |
 | **Workers** | Task spans (linked to enqueuing API trace via propagated context), agent-run child spans, LLM/tool/sandbox spans | `celery_task_duration_seconds{task,queue}`, `celery_queue_depth{queue}`, `task_retries_total`, `index_files_processed_total`, `index_duration_seconds` | task lifecycle, agent step logs |
 | **Agent runtime** | **Span per graph node** (planner/coder/…), span per tool invocation, span per approval wait | `agent_runs_total{outcome}`, `agent_node_duration_seconds{node}`, `agent_steps_per_run`, `approvals_pending`, `approval_wait_seconds`, `run_budget_exhaustions_total{budget}` | node transitions (= events) |
