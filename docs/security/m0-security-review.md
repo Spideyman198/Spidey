@@ -7,7 +7,7 @@ verification, see §4)
 ## 1. Controls implemented and verified this milestone
 
 | Control (requirement) | Implementation | Verification |
-|---|---|---|
+| --- | --- | --- |
 | Zero hardcoded secrets | All config via `Settings` (env-only, fail-fast); `.env` git-ignored; `.env.example` documented | `test_missing_required_variables_fail_fast`; gitleaks in pre-commit + CI |
 | Secret/PII redaction at the log choke point (SEC-PII seed) | `scrub_event_dict` processor in the structlog pipeline: sensitive keys, token shapes (Anthropic/OpenAI/GitHub/AWS/Slack/PEM), URL credentials, email masking, depth-bomb cutoff | `tests/unit/platform/test_scrubbing.py` (10 cases), `test_secrets_redacted_through_pipeline` |
 | Secure error handling (SEC-WEB) | RFC 9457 problems only; unexpected exceptions → generic detail + trace id; exception class names, messages, and stack traces never reach clients — including component names in readiness | `TestErrorLeakage`, `test_component_errors_expose_class_name_only` |
@@ -38,13 +38,32 @@ unbounded checks/tasks (time-boxed), CSP/clickjacking on the docs UI (docs route
   not published outside the compose network in the base file (loopback API only). Revisit at M14
   (NetworkPolicies).
 
-## 4. Environment-blocked verification
+## 4. Environment-blocked verification — CLOSED 2026-07-09
 
-Docker is not installed on the development host, so `docker compose up` (image build, container
-hardening flags in effect, service-to-service communication) could not be executed live. Mitigation:
-compose/Dockerfile validated syntactically and by policy rules; the CI `build` job builds the image
-on every push; integration tests (DB/Redis readiness) run in CI against real services. **This gate
-must be closed by running `make dev` on a Docker-capable host before M1 work begins.**
+Docker Desktop was installed and the gate was executed live. Evidence: full stack (10 services,
+`obs` profile included) built and started via compose `--wait`; `GET /api/v1/health/ready` from the
+host returned `200 {status: ok}` with all security headers; worker heartbeat executing on schedule
+with trace correlation; traces visible in Jaeger (`spidey` service registered); Prometheus scraping
+live app metrics; Grafana healthy; **all 80 tests including the integration suite passed against
+the running stack (92 % coverage)**.
+
+The live run caught two defects that static validation had missed — recorded here because they are
+exactly why this gate exists:
+
+1. **Compose command truncation (fixed).** The api `command:` used a YAML folded scalar with
+   more-indented continuation lines, which *preserves* newlines; `sh -c` received a multi-line
+   script and uvicorn silently started without `--host 0.0.0.0`. The loopback healthcheck still
+   passed, so `--wait` reported healthy while the API was unreachable from outside the container.
+   Lesson captured as comments in both compose files. Residual caveat: an in-container loopback
+   healthcheck cannot detect bind-address regressions — external readiness verification (this gate,
+   and Playwright e2e from M12) is the guard.
+2. **Collector self-metrics unreachable (fixed).** OTel Collector ≥ 0.111 binds internal telemetry
+   to localhost by default; Prometheus's scrape of `otel-collector:8888` was down. The metrics
+   reader now binds 0.0.0.0 — confined to the isolated compose network, never published to the host.
+
+One hardening-adjacent portability fix: all host-side service URLs now use `127.0.0.1` instead of
+`localhost` (Windows resolves localhost to ::1, where Docker Desktop's proxy accepts TCP but routes
+nowhere, producing hangs that mimic outages).
 
 ## 5. Carry-forward items
 
