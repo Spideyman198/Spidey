@@ -1,0 +1,41 @@
+name: 🐛 Bug report
+description: Something doesn't work as documented
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Clear description plus what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. make dev
+        2. POST /api/v1/...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: v0.3.0 or a commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [api, agents, codeintel, workspaces, execution, memory, llm, evaluation, ui, infra/ci, docs]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Structured log lines / trace IDs. **Redact any secrets or tokens.**
+      render: text

@@ -1,0 +1,16 @@
+{
+  "config": {
+    "default": true,
+    // Docs use long tables and links; hard-wrapping prose is handled by review.
+    "MD013": false,
+    // Inline HTML is used for badge/asset placeholders in README.
+    "MD033": false,
+    // First line is not always a top-level heading (e.g. frontmatter-free ADRs are).
+    "MD041": false,
+    // Duplicate headings are fine across sibling sections (e.g. "Exit:" pattern).
+    "MD024": { "siblings_only": true },
+    // Plain fences are used for ASCII trees and layered-architecture art.
+    "MD040": false
+  },
+  "ignores": ["node_modules", "backend/.venv", "evaluation/reports", "CODE_OF_CONDUCT.md"]
+}

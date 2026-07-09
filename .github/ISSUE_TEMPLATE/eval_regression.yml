@@ -1,0 +1,36 @@
+name: 📉 Eval regression
+description: A benchmark suite dropped below its blessed baseline
+labels: ["type:eval"]
+body:
+  - type: input
+    id: suite
+    attributes:
+      label: Suite
+      placeholder: retrieval / codegen / agent-tasks / safety / regression-replay
+    validations:
+      required: true
+  - type: input
+    id: metric
+    attributes:
+      label: Metric & delta
+      placeholder: "precision@10: 0.81 → 0.74 (baseline 0.80)"
+    validations:
+      required: true
+  - type: input
+    id: run
+    attributes:
+      label: Eval run (CI link or report artifact)
+    validations:
+      required: true
+  - type: textarea
+    id: suspects
+    attributes:
+      label: Suspected cause
+      description: Recent prompt/model/config/index changes in the window.
+  - type: checkboxes
+    id: action
+    attributes:
+      label: Resolution path
+      options:
+        - label: Fix the regression
+        - label: Re-bless the baseline (requires reviewed justification in the PR)

@@ -1,0 +1,9 @@
+# Extends the default gitleaks ruleset. The only allowlisted path is the
+# redaction test suite, which deliberately contains fake credential shapes
+# (e.g. AWS's documented example key) to prove the scrubbing pipeline works.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Deliberately fake credentials exercising the redaction pipeline"
+paths = ['''backend/tests/unit/platform/test_scrubbing\.py''']

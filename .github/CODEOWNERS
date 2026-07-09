@@ -1,0 +1,9 @@
+# Default owner for everything
+* @kinan-alrefai
+
+# Security-critical areas — flagged for extra review scrutiny even solo
+/backend/src/spidey/platform/security/ @kinan-alrefai
+/backend/src/spidey/execution/ @kinan-alrefai
+/infra/policy/ @kinan-alrefai
+/.github/workflows/ @kinan-alrefai
+/docs/adr/ @kinan-alrefai
