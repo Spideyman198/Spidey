@@ -8,13 +8,19 @@ import os
 import socket
 
 # Must run before importing spidey modules (Settings reads env at import sites).
+# 127.0.0.1, never "localhost": on Windows hosts, localhost can resolve to ::1
+# where Docker Desktop's port proxy accepts the TCP handshake but routes
+# nowhere — protocol handshakes then hang until timeout.
+# Defaults target the local compose dev stack (see .env.example) so integration
+# tests run out of the box when it is up and skip when it is down; CI overrides
+# all of these with its own service credentials at the job level.
 os.environ.setdefault("SPIDEY_ENVIRONMENT", "test")
 os.environ.setdefault(
     "SPIDEY_DATABASE_URL",
-    "postgresql+asyncpg://spidey:spidey-test@localhost:5432/spidey_test",
+    "postgresql+asyncpg://spidey:spidey-dev-password@127.0.0.1:5432/spidey",
 )
-os.environ.setdefault("SPIDEY_REDIS_URL", "redis://localhost:6379/0")
-os.environ.setdefault("SPIDEY_QDRANT_URL", "http://localhost:6333")
+os.environ.setdefault("SPIDEY_REDIS_URL", "redis://127.0.0.1:6379/0")
+os.environ.setdefault("SPIDEY_QDRANT_URL", "http://127.0.0.1:6333")
 
 from typing import TYPE_CHECKING, Any
 
