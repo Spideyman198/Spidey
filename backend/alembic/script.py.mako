@@ -9,7 +9,9 @@ Every migration ships a real, tested downgrade (docs/12 §4).
 
 from __future__ import annotations
 
-${imports if imports else "from alembic import op  # noqa: F401\nimport sqlalchemy as sa  # noqa: F401"}
+import sqlalchemy as sa
+from alembic import op
+${imports if imports else ""}
 
 revision = ${repr(up_revision)}
 down_revision = ${repr(down_revision)}

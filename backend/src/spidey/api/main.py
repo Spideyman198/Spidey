@@ -25,7 +25,7 @@ from spidey.api.middleware import (
     SecurityHeadersMiddleware,
 )
 from spidey.api.v1 import router as v1_router
-from spidey.composition import create_database_engine, create_http_client, create_redis_client
+from spidey.composition import build_container, close_container
 from spidey.platform.config import Settings, get_settings
 from spidey.platform.logging import configure_logging, get_logger
 from spidey.platform.telemetry import instrument_fastapi, setup_tracing
@@ -45,19 +45,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-        app.state.database_engine = create_database_engine(settings)
-        app.state.redis_client = create_redis_client(settings)
-        app.state.http_client = create_http_client()
-        app.state.qdrant_endpoint = settings.qdrant_endpoint
+        container = build_container(settings)
+        app.state.container = container
+        # Health checks read these directly off app.state (no request scope).
+        app.state.database_engine = container.engine
+        app.state.redis_client = container.redis
+        app.state.http_client = container.http_client
+        app.state.qdrant_endpoint = container.qdrant_endpoint
         _logger.info(
             "api_started", environment=settings.environment.value, version=spidey.__version__
         )
         try:
             yield
         finally:
-            await app.state.http_client.aclose()
-            await app.state.redis_client.aclose()
-            await app.state.database_engine.dispose()
+            await close_container(container)
             _logger.info("api_stopped")
 
     app = FastAPI(

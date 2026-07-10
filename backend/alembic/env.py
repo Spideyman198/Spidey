@@ -13,12 +13,21 @@ from typing import TYPE_CHECKING
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
+# The Alembic env is an entrypoint outside the spidey package, so it may import
+# every context directly (unlike the platform kernel). Importing each context's
+# ORM models registers them on the shared Base, so autogenerate and migrations
+# see the whole schema from one metadata object.
+from spidey.identity.infrastructure import orm as _identity_orm  # noqa: F401
+from spidey.memory.infrastructure import orm as _memory_orm  # noqa: F401
+from spidey.platform import audit as _audit_orm  # noqa: F401
 from spidey.platform.config import get_settings
+from spidey.platform.db import Base
+from spidey.workspaces.infrastructure import orm as _workspaces_orm  # noqa: F401
 
 if TYPE_CHECKING:
     from sqlalchemy import Connection
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

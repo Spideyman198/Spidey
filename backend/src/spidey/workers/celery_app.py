@@ -18,7 +18,10 @@ from spidey.platform.config import Settings, get_settings
 from spidey.platform.logging import configure_logging
 from spidey.platform.telemetry import instrument_celery, setup_tracing
 
-TASK_MODULES = ("spidey.workers.tasks.maintenance",)
+TASK_MODULES = (
+    "spidey.workers.tasks.maintenance",
+    "spidey.workers.tasks.ingestion",
+)
 
 HEARTBEAT_INTERVAL_SECONDS = 60.0
 
@@ -42,6 +45,7 @@ def create_celery_app(settings: Settings | None = None) -> Celery:
         broker_connection_retry_on_startup=True,
         worker_hijack_root_logger=False,
         task_default_queue="maintenance",
+        task_routes={"spidey.workspaces.ingest": {"queue": "ingestion"}},
         beat_schedule={
             "platform-heartbeat": {
                 "task": "spidey.maintenance.heartbeat",
