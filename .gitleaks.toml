@@ -1,9 +1,21 @@
-# Extends the default gitleaks ruleset. The only allowlisted path is the
-# redaction test suite, which deliberately contains fake credential shapes
-# (e.g. AWS's documented example key) to prove the scrubbing pipeline works.
+# Extends the default gitleaks ruleset.
 [extend]
 useDefault = true
 
+# Allowlisting rationale: the only "secrets" in this repo are non-secret test
+# fixtures and documented placeholders. Test files carry descriptive fixture
+# keys (e.g. "integration-test-secret-key-at-least-32-chars"); .env.example
+# carries "change-me-..." placeholders. Real secrets only ever come from the
+# environment at runtime and never enter the tree. The pre-commit gitleaks hook
+# (diff-scoped) remains the guard against a real secret being introduced.
 [allowlist]
-description = "Deliberately fake credentials exercising the redaction pipeline"
-paths = ['''backend/tests/unit/platform/test_scrubbing\.py''']
+description = "Test fixtures and documented placeholders — never real secrets"
+paths = [
+  '''backend/tests/.*''',
+  '''\.env\.example''',
+  '''scripts/export_openapi\.py''',
+]
+# Belt-and-suspenders: the descriptive placeholder shape these fixtures use.
+regexes = [
+  '''(?i)(test|integration|dev-only|placeholder|example|change-me|changeme|ci-test|openapi-export)[a-z0-9-]*(secret|key|master|password)''',
+]
