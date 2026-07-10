@@ -22,8 +22,8 @@ jobs:
     defaults:
       run: { working-directory: backend }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - run: uv run ruff check .
@@ -36,8 +36,8 @@ jobs:
     defaults:
       run: { working-directory: backend }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - run: uv run pyright
@@ -72,12 +72,12 @@ jobs:
       SPIDEY_AUTH_SECRET_KEY: ci-test-secret-key-at-least-thirty-two-characters
       SPIDEY_ENCRYPTION_MASTER_KEY: ci-test-encryption-master-key-thirty-two-chars
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - run: uv run pytest --cov=spidey --cov-report=xml --cov-report=term --cov-fail-under=85
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: backend/coverage.xml
@@ -86,9 +86,9 @@ jobs:
     name: Docker image build
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/Dockerfile.backend

@@ -18,12 +18,12 @@ jobs:
     defaults:
       run: { working-directory: backend }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - run: uv run python -m spidey.evaluation run --tier t1 --check-baselines
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eval-report-t1
@@ -41,8 +41,8 @@ jobs:
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - name: Run T2 (skips if no provider key)
@@ -52,7 +52,7 @@ jobs:
             exit 0
           fi
           uv run python -m spidey.evaluation run --tier t2 --check-baselines
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eval-report-t2
