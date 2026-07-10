@@ -11,7 +11,7 @@ dependencies = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.34",
   # Contracts & config
-  "pydantic>=2.10",
+  "pydantic[email]>=2.10",
   "pydantic-settings>=2.7",
   # Persistence (schema managed by Alembic from M0; first models land in M1)
   "sqlalchemy[asyncio]>=2.0.36",
@@ -29,6 +29,11 @@ dependencies = [
   "prometheus-client>=0.21",
   # HTTP client (health probes now; provider adapters from M6)
   "httpx>=0.28",
+  "argon2-cffi>=23.1",
+  "pyjwt>=2.10",
+  "cryptography>=44.0",
+  "gitpython>=3.1.43",
+  "pathspec>=0.12",
 ]
 
 [dependency-groups]
@@ -65,7 +70,10 @@ select = [
 ]
 ignore = [
   "TRY003", # long exception messages inline are fine with our error taxonomy
+  "EM101",  # ditto: our SpideyError subclasses take literal detail strings
+  "EM102",  # ditto for f-string details
   "ISC001", # conflicts with the formatter
+  "PLR0913", # services use keyword-only args by design; arg count is not a smell here
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -75,8 +83,18 @@ ignore = [
   "S105",    # fake credentials in fixtures
   "S106",
   "EM101",   # inline exception messages in fakes/fixtures are readable
+  "ARG002",  # fakes implement port signatures without using every argument
+  "PLC0415", # fixtures import lazily to control settings-load ordering
+  "S603",    # attack-shaped tests spawn helper processes (e.g. mklink)
+  "S607",    # ...with partial paths (cmd/mklink) — controlled test input
+  "S104",    # test parametrize lists include 0.0.0.0 as an SSRF target string
 ]
 "src/spidey/evaluation/__main__.py" = ["T201"] # CLI prints its report by design
+"src/spidey/identity/__main__.py" = ["T201"]    # bootstrap CLI prints its result
+# Audit action names and a Lua script literal trip the "hardcoded password"
+# heuristic on their variable names — not credentials.
+"src/spidey/platform/audit.py" = ["S105"]
+"src/spidey/identity/infrastructure/redis_guard.py" = ["S105"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["spidey"]
@@ -114,6 +132,7 @@ exclude_lines = [
   "if TYPE_CHECKING:",
   "raise NotImplementedError",
   "@overload",
+  '\.\.\.', # Protocol/ABC stub bodies have no executable logic
 ]
 
 # ── Bandit ────────────────────────────────────────────────────────────────────
@@ -128,12 +147,51 @@ root_package = "spidey"
 name = "platform is the shared kernel — it imports no context or interface"
 type = "forbidden"
 source_modules = ["spidey.platform"]
-forbidden_modules = ["spidey.api", "spidey.workers", "spidey.evaluation"]
+forbidden_modules = [
+  "spidey.api",
+  "spidey.workers",
+  "spidey.evaluation",
+  "spidey.identity",
+  "spidey.memory",
+  "spidey.workspaces",
+]
 
 [[tool.importlinter.contracts]]
 name = "interface layers do not import each other"
 type = "independence"
 modules = ["spidey.api", "spidey.workers"]
+
+[[tool.importlinter.contracts]]
+name = "bounded contexts do not import each other's internals"
+type = "independence"
+modules = ["spidey.identity", "spidey.memory", "spidey.evaluation", "spidey.workspaces"]
+
+[[tool.importlinter.contracts]]
+name = "workspaces is layered: infrastructure -> application -> domain"
+type = "layers"
+layers = [
+  "spidey.workspaces.infrastructure",
+  "spidey.workspaces.application",
+  "spidey.workspaces.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "identity is layered: infrastructure -> application -> domain"
+type = "layers"
+layers = [
+  "spidey.identity.infrastructure",
+  "spidey.identity.application",
+  "spidey.identity.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "memory is layered: infrastructure -> application -> domain"
+type = "layers"
+layers = [
+  "spidey.memory.infrastructure",
+  "spidey.memory.application",
+  "spidey.memory.domain",
+]
 
 [[tool.importlinter.contracts]]
 name = "evaluation is layered: infrastructure -> application -> domain"

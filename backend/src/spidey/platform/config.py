@@ -11,9 +11,10 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated
 
-from pydantic import AnyHttpUrl, Field, PostgresDsn, RedisDsn, field_validator
+from pydantic import AnyHttpUrl, Field, PostgresDsn, RedisDsn, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -49,6 +50,31 @@ class Settings(BaseSettings):
     redis_url: RedisDsn
     qdrant_url: AnyHttpUrl
 
+    # ── Authentication (identity context) ────────────────────────────────────
+    # HS256 signing key for access tokens. Required, never defaulted, never
+    # logged (SecretStr). 32+ chars enforced — a short key defeats HMAC.
+    auth_secret_key: SecretStr = Field(min_length=32)
+    access_token_ttl_seconds: int = Field(default=900, ge=60, le=3600)
+    refresh_token_ttl_days: int = Field(default=14, ge=1, le=90)
+
+    # ── Secret encryption (workspaces context) ───────────────────────────────
+    # Master key for envelope-encrypting user secrets (GitHub PATs) at rest.
+    # 32+ chars; a key-derivation step turns it into a 256-bit AES key.
+    encryption_master_key: SecretStr = Field(min_length=32)
+
+    # ── Workspaces & ingestion ───────────────────────────────────────────────
+    # Base directory that holds every workspace's isolated tree. Each workspace
+    # lives in a subdirectory and no file access may escape its root (SEC-FS).
+    workspaces_root: Path = Field(default=Path("/var/lib/spidey/workspaces"))
+    # Per-workspace disk quota (bytes). Default 2 GiB.
+    workspace_max_bytes: int = Field(default=2 * 1024**3, ge=1024**2)
+    # Files larger than this are inventoried but not read for indexing. 5 MiB.
+    ingest_max_file_bytes: int = Field(default=5 * 1024**2, ge=1024)
+    # Hosts a repository may be cloned from (SSRF allow-list).
+    allowed_git_hosts: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["github.com"]
+    )
+
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
     otel_service_name: str = Field(default="spidey", min_length=1)
 
@@ -62,7 +88,7 @@ class Settings(BaseSettings):
             return None
         return value
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "allowed_git_hosts", mode="before")
     @classmethod
     def _split_csv(cls, value: object) -> object:
         if isinstance(value, str):
@@ -96,6 +122,10 @@ class Settings(BaseSettings):
     @property
     def qdrant_endpoint(self) -> str:
         return str(self.qdrant_url).rstrip("/")
+
+    @property
+    def workspaces_root_path(self) -> Path:
+        return self.workspaces_root
 
 
 @lru_cache(maxsize=1)

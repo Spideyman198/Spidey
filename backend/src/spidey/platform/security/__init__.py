@@ -1,9 +1,10 @@
 """Security primitives shared across contexts.
 
-M0 ships log/output redaction. Password hashing, JWT, and envelope encryption
-arrive with the identity context in M1.
+Redaction (M0), envelope encryption for secrets at rest (M2). Password hashing
+and JWT are identity-context concerns and live there.
 """
 
+from spidey.platform.security.encryption import DecryptionError, SecretCipher
 from spidey.platform.security.scrubbing import scrub_event_dict, scrub_text
 
-__all__ = ["scrub_event_dict", "scrub_text"]
+__all__ = ["DecryptionError", "SecretCipher", "scrub_event_dict", "scrub_text"]
