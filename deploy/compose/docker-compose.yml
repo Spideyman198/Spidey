@@ -12,6 +12,14 @@ x-app-env: &app-env
   SPIDEY_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-spidey}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-spidey}
   SPIDEY_REDIS_URL: redis://redis:6379/0
   SPIDEY_QDRANT_URL: http://qdrant:6333
+  SPIDEY_AUTH_SECRET_KEY: ${SPIDEY_AUTH_SECRET_KEY:?set SPIDEY_AUTH_SECRET_KEY in .env}
+  SPIDEY_ACCESS_TOKEN_TTL_SECONDS: ${SPIDEY_ACCESS_TOKEN_TTL_SECONDS:-900}
+  SPIDEY_REFRESH_TOKEN_TTL_DAYS: ${SPIDEY_REFRESH_TOKEN_TTL_DAYS:-14}
+  SPIDEY_ENCRYPTION_MASTER_KEY: ${SPIDEY_ENCRYPTION_MASTER_KEY:?set SPIDEY_ENCRYPTION_MASTER_KEY in .env}
+  SPIDEY_WORKSPACES_ROOT: /var/lib/spidey/workspaces
+  SPIDEY_WORKSPACE_MAX_BYTES: ${SPIDEY_WORKSPACE_MAX_BYTES:-2147483648}
+  SPIDEY_INGEST_MAX_FILE_BYTES: ${SPIDEY_INGEST_MAX_FILE_BYTES:-5242880}
+  SPIDEY_ALLOWED_GIT_HOSTS: ${SPIDEY_ALLOWED_GIT_HOSTS:-github.com}
   # Empty when the obs profile is off; `make dev` injects the collector endpoint.
   SPIDEY_OTEL_EXPORTER_OTLP_ENDPOINT: ${SPIDEY_OTEL_COLLECTOR_ENDPOINT:-}
   SPIDEY_OTEL_SERVICE_NAME: spidey
@@ -33,6 +41,10 @@ services:
       sh -c "alembic upgrade head &&
       exec uvicorn spidey.api.main:create_app --factory --host 0.0.0.0 --port 8000"
     environment: *app-env
+    # Shared with the worker: the worker writes ingested trees here and the API
+    # removes them on workspace deletion.
+    volumes:
+      - workspaces_data:/var/lib/spidey/workspaces
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -58,8 +70,10 @@ services:
     <<: [*app-build, *app-hardening]
     command: >
       celery -A spidey.workers.celery_app.app worker
-      --loglevel INFO --concurrency ${WORKER_CONCURRENCY:-2} -Q maintenance
+      --loglevel INFO --concurrency ${WORKER_CONCURRENCY:-2} -Q maintenance,ingestion
     environment: *app-env
+    volumes:
+      - workspaces_data:/var/lib/spidey/workspaces
     depends_on:
       redis: { condition: service_healthy }
       postgres: { condition: service_healthy }
@@ -180,3 +194,4 @@ volumes:
   qdrant_data:
   prometheus_data:
   grafana_data:
+  workspaces_data:

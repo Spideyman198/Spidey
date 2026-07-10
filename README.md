@@ -7,9 +7,11 @@ is safe to point at untrusted code, with a human approving every destructive act
 <!-- Badges activate at first push / when pipelines are live — no placeholder-lying badges.
 CI · CodeQL · Coverage (Codecov) · Python 3.12+ · TypeScript · License: Apache-2.0 · SemVer -->
 
-> **Status: M0 complete** — foundations, platform kernel, CI/security pipeline, compose stack,
-> and the evaluation harness are implemented and tested (architecture frozen for v1.0 in the
-> [design review](docs/14-design-review.md)). Next: [M1 — identity & API core](docs/04-milestones.md).
+> **Status: M2 complete** — on top of M0/M1 (auth, RBAC, audit, sessions), the platform now ingests
+> repositories from local paths or GitHub (envelope-encrypted PATs, SSRF-guarded clone) into
+> isolated workspaces guarded by a two-layer `SafeFileSystem`, producing `.gitignore`-aware file
+> manifests with SHA-256 change detection. Architecture frozen for v1.0 in the
+> [design review](docs/14-design-review.md). Next: [M3 — parsing & code index](docs/04-milestones.md).
 > Badges, GIFs, and benchmarks appear as their milestones land.
 
 <!-- hero-gif: docs/assets/hero.gif — full run: goal → plan → approval → diff → tests → PR (M12) -->
@@ -62,6 +64,10 @@ make bootstrap              # backend deps + git hooks
 make dev                    # full stack: API, worker, beat, Postgres, Redis, Qdrant,
                             #             OTel collector, Jaeger, Prometheus, Grafana
 curl http://localhost:8000/api/v1/health/ready
+
+# Create the first administrator (first run only):
+SPIDEY_BOOTSTRAP_PASSWORD='<a-strong-password>' \
+  python -m spidey.identity bootstrap-admin --email you@example.com
 ```
 
 `make dev-min` starts the core services only; `make test lint typecheck security` runs the local

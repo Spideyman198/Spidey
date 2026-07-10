@@ -23,6 +23,10 @@ _EXPORT_ENV_DEFAULTS = {
     "SPIDEY_DATABASE_URL": "postgresql+asyncpg://export:export@localhost:5432/export",
     "SPIDEY_REDIS_URL": "redis://localhost:6379/0",
     "SPIDEY_QDRANT_URL": "http://localhost:6333",
+    # Placeholders only — this process never signs a token or encrypts anything,
+    # it just renders the schema. Satisfies Settings' min-length validation.
+    "SPIDEY_AUTH_SECRET_KEY": "openapi-export-placeholder-not-a-real-secret-000",  # noqa: S105
+    "SPIDEY_ENCRYPTION_MASTER_KEY": "openapi-export-placeholder-encryption-key-00",  # noqa: S105
 }
 
 

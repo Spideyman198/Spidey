@@ -69,6 +69,8 @@ jobs:
       SPIDEY_DATABASE_URL: postgresql+asyncpg://spidey:spidey-ci@localhost:5432/spidey_test
       SPIDEY_REDIS_URL: redis://localhost:6379/0
       SPIDEY_QDRANT_URL: http://localhost:6333
+      SPIDEY_AUTH_SECRET_KEY: ci-test-secret-key-at-least-thirty-two-characters
+      SPIDEY_ENCRYPTION_MASTER_KEY: ci-test-encryption-master-key-thirty-two-chars
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

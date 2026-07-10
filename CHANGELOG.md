@@ -17,3 +17,18 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   Docker Compose stack, configuration & structured logging & telemetry kernel, FastAPI walking
   skeleton with health endpoints, Celery heartbeat, Alembic baseline, and the evaluation harness
   skeleton with tiered CI wiring.
+- M1 identity, audit & sessions: Argon2id users; HS256 access tokens with rotating,
+  reuse-detecting refresh tokens; RBAC (admin/developer/viewer) enforced per route; Redis
+  token-bucket rate limiting and per-account lockout (fail-closed); an append-only `audit_log`
+  (database-trigger enforced) with an independent-commit sink for denial evidence; session and
+  message CRUD with strict owner scoping; first-run admin bootstrap CLI; and the full versioned
+  REST surface under `/api/v1` with OpenAPI. Backed by 143 tests (unit, integration, attack-shaped
+  security) at ~90% coverage.
+- M2 workspaces & repository ingestion: `SafeFileSystem` two-layer containment (pure path policy +
+  symlink/NTFS-junction resolution) as the single guarded file-access path; local-path and
+  GitHub-PAT ingestion on Celery workers with durable status transitions; envelope-encrypted PAT
+  storage (HKDF + AES-256-GCM); SSRF-guarded clone (HTTPS + host allow-list + private-address
+  rejection); `.gitignore`-aware, binary- and size-capped file manifests with SHA-256 change
+  detection; per-workspace disk quotas; and owner-scoped workspace APIs. Backed by 224 tests
+  (adds SEC-FS junction/symlink/traversal, SSRF, and envelope-encryption attack suites) at ~89%
+  coverage.
