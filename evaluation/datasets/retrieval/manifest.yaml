@@ -1,0 +1,11 @@
+suite: retrieval
+source: self-authored (Spidey project fixture, not an external repository)
+license: same as this repository
+grading_method: >
+  Ingest fixture/ as a workspace, build the hybrid index (dense + BM25), and run
+  each golden query through the live SearchService. A result is identified as
+  "<path>::<header_path>". Metrics: mean precision@k, recall@k, MRR, hit_rate
+  (k from golden.json). Floors are enforced by evaluation/baselines/retrieval.json.
+notes: >
+  Self-authored code so no upstream commit SHA is pinned. Deterministic given the
+  pinned embedding model (BAAI/bge-small-en-v1.5 dense + Qdrant/bm25 sparse).

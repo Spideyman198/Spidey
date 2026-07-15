@@ -1,0 +1,37 @@
+{
+  "k": 5,
+  "cases": [
+    {
+      "query": "discard the least recently used entry from the cache",
+      "relevant": ["cache.py::LRUCache.evict"]
+    },
+    {
+      "query": "securely hash a user password before storing it",
+      "relevant": ["auth.py::hash_password"]
+    },
+    {
+      "query": "check a plaintext password against a stored hash",
+      "relevant": ["auth.py::verify_password"]
+    },
+    {
+      "query": "create a signed authentication token for a session",
+      "relevant": ["auth.py::generate_token"]
+    },
+    {
+      "query": "retry a network request with exponential backoff",
+      "relevant": ["http_client.py::retry_request"]
+    },
+    {
+      "query": "parse a raw HTTP response into status and headers",
+      "relevant": ["http_client.py::parse_response"]
+    },
+    {
+      "query": "compute the area of a polygon from its vertices",
+      "relevant": ["geometry.py::polygon_area"]
+    },
+    {
+      "query": "euclidean distance between two points",
+      "relevant": ["geometry.py::distance_between_points"]
+    }
+  ]
+}

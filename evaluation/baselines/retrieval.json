@@ -1,0 +1,6 @@
+{
+  "precision_at_5": {"min": 0.15},
+  "recall_at_5": {"min": 0.75},
+  "mrr": {"min": 0.7},
+  "hit_rate": {"min": 0.85}
+}
