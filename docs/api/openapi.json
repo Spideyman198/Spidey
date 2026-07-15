@@ -250,6 +250,18 @@
         "title": "IndexStatus",
         "type": "string"
       },
+      "Language": {
+        "enum": [
+          "python",
+          "javascript",
+          "typescript",
+          "go",
+          "java",
+          "rust"
+        ],
+        "title": "Language",
+        "type": "string"
+      },
       "LivenessReport": {
         "properties": {
           "status": {
@@ -402,6 +414,84 @@
         ],
         "title": "Role",
         "type": "string"
+      },
+      "SearchHitResponse": {
+        "description": "One hybrid-search result with full provenance (FR-2.3).\n\n``suspect`` surfaces the index-time injection screen so a client renders a\nwarning; ``source`` reports how the hit was found ('hybrid' or 'symbol').",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "end_line": {
+            "title": "End Line",
+            "type": "integer"
+          },
+          "header_path": {
+            "title": "Header Path",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SymbolKind"
+          },
+          "language": {
+            "$ref": "#/components/schemas/Language"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "start_line": {
+            "title": "Start Line",
+            "type": "integer"
+          },
+          "suspect": {
+            "title": "Suspect",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "language",
+          "header_path",
+          "kind",
+          "start_line",
+          "end_line",
+          "content",
+          "score",
+          "suspect",
+          "source"
+        ],
+        "title": "SearchHitResponse",
+        "type": "object"
+      },
+      "SearchResponse": {
+        "properties": {
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHitResponse"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "hits"
+        ],
+        "title": "SearchResponse",
+        "type": "object"
       },
       "SessionResponse": {
         "properties": {
@@ -1794,6 +1884,79 @@
           }
         ],
         "summary": "Re-run ingestion for a workspace",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/search": {
+      "get": {
+        "operationId": "search_code_api_v1_workspaces__workspace_id__search_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Search query",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "description": "Search query",
+              "maxLength": 1024,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Hybrid (semantic + lexical) code search",
         "tags": [
           "workspaces"
         ]

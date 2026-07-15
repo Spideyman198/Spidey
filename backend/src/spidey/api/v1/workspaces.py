@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Query, Request, status
 
 from spidey.api.deps import (
     CurrentUser,
     RequireDeveloper,
+    SearchServiceDep,
     SessionDep,
     SymbolStoreDep,
     WorkspaceServiceDep,
@@ -26,6 +28,8 @@ from spidey.api.v1.schemas import (
     CreateWorkspaceRequest,
     FileManifestEntryResponse,
     IndexStateResponse,
+    SearchHitResponse,
+    SearchResponse,
     SymbolResponse,
     WorkspaceResponse,
 )
@@ -155,6 +159,24 @@ async def list_symbols(
     await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
     found = await symbols.list_symbols(workspace_id=workspace_id, path=path)
     return [SymbolResponse.model_validate(s) for s in found]
+
+
+@router.get(
+    "/{workspace_id}/search",
+    response_model=SearchResponse,
+    summary="Hybrid (semantic + lexical) code search",
+)
+async def search_code(
+    workspace_id: uuid.UUID,
+    user: CurrentUser,
+    workspaces: WorkspaceServiceDep,
+    search: SearchServiceDep,
+    q: Annotated[str, Query(min_length=1, max_length=1024, description="Search query")],
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> SearchResponse:
+    await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
+    hits = await search.search(workspace_id=workspace_id, query=q, limit=limit)
+    return SearchResponse(query=q, hits=[SearchHitResponse.model_validate(hit) for hit in hits])
 
 
 @router.post(

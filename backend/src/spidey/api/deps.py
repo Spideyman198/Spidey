@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from spidey.codeintel.application import SearchService
 from spidey.codeintel.infrastructure import PostgresSymbolStore
 from spidey.identity.application import AuthService, UserService
 from spidey.identity.domain.models import Role, User
@@ -101,11 +102,21 @@ def get_symbol_store(session: SessionDep) -> PostgresSymbolStore:
     return PostgresSymbolStore(session)
 
 
+def get_search_service(container: ContainerDep, session: SessionDep) -> SearchService:
+    return SearchService(
+        store=PostgresSymbolStore(session),
+        dense_embedder=container.dense_embedder,
+        sparse_embedder=container.sparse_embedder,
+        vector_index=container.vector_index,
+    )
+
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation_service)]
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
 SymbolStoreDep = Annotated[PostgresSymbolStore, Depends(get_symbol_store)]
+SearchServiceDep = Annotated[SearchService, Depends(get_search_service)]
 
 
 async def get_current_user(

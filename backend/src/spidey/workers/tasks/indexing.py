@@ -12,7 +12,7 @@ import uuid
 
 from celery import shared_task
 
-from spidey.codeintel.application import IndexService
+from spidey.codeintel.application import EmbeddingPipeline, IndexService
 from spidey.codeintel.domain.models import ManifestEntry
 from spidey.codeintel.infrastructure import PostgresSymbolStore
 from spidey.platform.logging import get_logger
@@ -46,7 +46,15 @@ async def _index(workspace_id: uuid.UUID) -> None:
     reader = WorkspaceSourceReader(container.workspace_storage.filesystem(workspace_id))
 
     async with container.session_factory() as session:
-        service = IndexService(store=PostgresSymbolStore(session), parser=container.code_parser)
+        service = IndexService(
+            store=PostgresSymbolStore(session),
+            parser=container.code_parser,
+            embedding=EmbeddingPipeline(
+                dense=container.dense_embedder,
+                sparse=container.sparse_embedder,
+                vectors=container.vector_index,
+            ),
+        )
         outcome = await service.reindex(workspace_id=workspace_id, manifest=manifest, reader=reader)
         await session.commit()
 

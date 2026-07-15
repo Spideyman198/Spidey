@@ -150,3 +150,29 @@ class LanguageSummary(BaseModel):
     """Which languages the indexer supports (FR-2.1)."""
 
     languages: list[Language]
+
+
+class SearchHitResponse(BaseModel):
+    """One hybrid-search result with full provenance (FR-2.3).
+
+    ``suspect`` surfaces the index-time injection screen so a client renders a
+    warning; ``source`` reports how the hit was found ('hybrid' or 'symbol').
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    path: str
+    language: Language
+    header_path: str
+    kind: SymbolKind
+    start_line: int
+    end_line: int
+    content: str
+    score: float
+    suspect: bool
+    source: str
+
+
+class SearchResponse(BaseModel):
+    query: str
+    hits: list[SearchHitResponse]
