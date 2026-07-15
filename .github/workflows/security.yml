@@ -24,7 +24,7 @@ jobs:
       GITLEAKS_VERSION: 8.30.1
       GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # the full history is the scan target
       - name: Install gitleaks (version + checksum pinned)
@@ -42,8 +42,8 @@ jobs:
     defaults:
       run: { working-directory: backend }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - name: Bandit
@@ -61,8 +61,8 @@ jobs:
     defaults:
       run: { working-directory: backend }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - name: pip-audit against the lockfile
         run: |
@@ -73,7 +73,7 @@ jobs:
     name: Trivy (filesystem + IaC)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Tag verified against the trivy-action releases (the repo moved to
       # v-prefixed tags; plain 0.x tags no longer exist for new versions).
       - uses: aquasecurity/trivy-action@v0.36.0
@@ -88,7 +88,7 @@ jobs:
     name: OPA/Conftest (infra policy)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Conftest on Dockerfiles and compose
         uses: docker://openpolicyagent/conftest:v0.56.0
         with:
@@ -100,7 +100,7 @@ jobs:
     name: SBOM (CycloneDX)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: anchore/sbom-action@v0
         with:
           path: .
