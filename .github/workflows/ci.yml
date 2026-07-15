@@ -64,6 +64,9 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s
           --health-timeout 5s --health-retries 10
+      qdrant:
+        image: qdrant/qdrant:v1.13.4
+        ports: ["6333:6333"]
     env:
       SPIDEY_ENVIRONMENT: test
       SPIDEY_DATABASE_URL: postgresql+asyncpg://spidey:spidey-ci@localhost:5432/spidey_test
@@ -71,11 +74,25 @@ jobs:
       SPIDEY_QDRANT_URL: http://localhost:6333
       SPIDEY_AUTH_SECRET_KEY: ci-test-secret-key-at-least-thirty-two-characters
       SPIDEY_ENCRYPTION_MASTER_KEY: ci-test-encryption-master-key-thirty-two-chars
+      # Bake embedding models into a cached dir so retrieval tests never re-download.
+      SPIDEY_FASTEMBED_CACHE_PATH: ${{ github.workspace }}/.fastembed-cache
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with: { python-version: "3.12" }
       - run: uv sync --group dev
+      # Local fastembed models (dense + BM25) are ~150 MB; cache across runs.
+      - uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.fastembed-cache
+          key: fastembed-bge-small-en-v1.5-bm25-v1
+      - name: Wait for Qdrant
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:6333/readyz; then echo "qdrant ready"; exit 0; fi
+            sleep 2
+          done
+          echo "qdrant did not become ready" >&2; exit 1
       - run: uv run pytest --cov=spidey --cov-report=xml --cov-report=term --cov-fail-under=85
       - uses: actions/upload-artifact@v4
         with:

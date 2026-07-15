@@ -40,3 +40,14 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   parsing (wall-clock timeout, size cap, depth limit); ingestion now chains code indexing; and
   owner-scoped symbol/index-status APIs. Backed by 261 tests (adds per-language extraction and
   incremental-index suites) at ~90% coverage. Runtime image now includes git for cloning.
+- M4 hybrid semantic search: local, deterministic embeddings via fastembed/ONNX (dense
+  `BAAI/bge-small-en-v1.5` + sparse `Qdrant/bm25`, no third-party API, baked into the image) behind
+  a new `llm` context; per-workspace Qdrant collections with named dense + BM25 vectors fused
+  server-side by reciprocal-rank fusion; incremental vector maintenance (stale vectors purged for
+  changed/removed files, idempotent UUID5 point ids); an exact-symbol lexical boost over the semantic
+  ranking; and an owner-scoped `/workspaces/{id}/search` endpoint returning full provenance. Security
+  (SEC-PI): all retrieved content is wrapped in an inert, attributed data frame with forged-fence
+  neutralization before any prompt use, backed by an index-time injection screen that flags `suspect`
+  chunks through both the symbol store and the vector payload. Adds a golden-set retrieval quality
+  gate (precision@k / recall@k / MRR with blessed baselines) run against live Qdrant in CI. Backed by
+  new embedder, vector-index, search, framing, injection, and retrieval-eval suites.

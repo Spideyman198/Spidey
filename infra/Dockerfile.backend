@@ -48,6 +48,19 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
+# Bake the embedding models into the image so the running container never
+# downloads at runtime — required for a read-only rootfs and an offline/air-
+# gapped deploy. Model names must match the Settings defaults (config.py); the
+# cache path is exported below so both indexing and search load from here.
+ARG EMBEDDING_MODEL="BAAI/bge-small-en-v1.5"
+ARG SPARSE_EMBEDDING_MODEL="Qdrant/bm25"
+ENV SPIDEY_FASTEMBED_CACHE_PATH=/opt/fastembed
+RUN python -c "import sys; from fastembed import TextEmbedding, SparseTextEmbedding; \
+c=sys.argv[1]; TextEmbedding(model_name=sys.argv[2], cache_dir=c); \
+SparseTextEmbedding(model_name=sys.argv[3], cache_dir=c)" \
+    "$SPIDEY_FASTEMBED_CACHE_PATH" "$EMBEDDING_MODEL" "$SPARSE_EMBEDDING_MODEL" \
+    && chown -R spidey:spidey /opt/fastembed
+
 USER spidey
 EXPOSE 8000
 

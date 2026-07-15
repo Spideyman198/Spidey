@@ -7,11 +7,13 @@ is safe to point at untrusted code, with a human approving every destructive act
 <!-- Badges activate at first push / when pipelines are live — no placeholder-lying badges.
 CI · CodeQL · Coverage (Codecov) · Python 3.12+ · TypeScript · License: Apache-2.0 · SemVer -->
 
-> **Status: M3 complete** — on top of M0–M2 (auth, RBAC, audit, sessions, workspaces & ingestion),
-> the platform now parses ingested repositories with Tree-sitter across six languages, extracting a
-> qualified-name symbol index and syntax-aware chunks, with incremental re-indexing driven by
-> SHA-256 change detection. Architecture frozen for v1.0 in the
-> [design review](docs/14-design-review.md). Next: [M4 — semantic search](docs/04-milestones.md).
+> **Status: M4 complete** — on top of M0–M3 (auth, RBAC, audit, sessions, workspaces & ingestion,
+> Tree-sitter parsing & symbol index), the platform now runs hybrid semantic search: local fastembed
+> embeddings (dense + BM25) fused in per-workspace Qdrant collections by reciprocal-rank fusion, with
+> an exact-symbol lexical boost, incremental vector maintenance, and full-provenance results. All
+> retrieved content is data-framed inert with an index-time injection screen (SEC-PI), and a golden
+> retrieval-quality gate (P/R@k, MRR) runs against live Qdrant in CI. Architecture frozen for v1.0 in
+> the [design review](docs/14-design-review.md). Next: [M5 — knowledge graph](docs/04-milestones.md).
 > Badges, GIFs, and benchmarks appear as their milestones land.
 
 <!-- hero-gif: docs/assets/hero.gif — full run: goal → plan → approval → diff → tests → PR (M12) -->
