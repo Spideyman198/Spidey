@@ -6,31 +6,71 @@ no-longer-indexable files have their symbols removed; a file that cannot be
 parsed is recorded as indexed-but-empty so it is not retried every pass. The
 whole operation is bounded per file (parser timeout + size cap), so one bad
 file never stalls the index.
+
+When an embedding pipeline is wired (M4), each re-parsed chunk is also screened
+for injection payloads (SEC-PI), embedded (dense + sparse), and upserted into
+the per-workspace vector index; stale vectors for changed or removed files are
+deleted first so retrieval never returns a ghost of old content.
 """
 
 from __future__ import annotations
 
+import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from spidey.codeintel.domain.errors import ParseError
 from spidey.codeintel.domain.languages import language_for_path
 from spidey.codeintel.domain.models import IndexOutcome, IndexStatus
+from spidey.codeintel.domain.ports import VectorRecord
 from spidey.platform.logging import get_logger
+from spidey.platform.security import looks_like_injection
 
 if TYPE_CHECKING:
-    import uuid
-
-    from spidey.codeintel.domain.models import Language, ManifestEntry
-    from spidey.codeintel.domain.ports import Parser, SourceReader, SymbolStore
+    from spidey.codeintel.domain.models import CodeChunk, Language, ManifestEntry
+    from spidey.codeintel.domain.ports import (
+        DenseEmbedder,
+        Parser,
+        SourceReader,
+        SparseEmbedder,
+        SymbolStore,
+        VectorIndex,
+    )
 
 _logger = get_logger("spidey.codeintel.indexer")
 
 
+@dataclass(frozen=True, slots=True)
+class EmbeddingPipeline:
+    """The three collaborators that turn chunks into searchable vectors.
+
+    Bundled so the indexer holds one optional dependency: when it is present the
+    index embeds and upserts, when absent it does symbol-only indexing (M3). A
+    single ``None`` check narrows all three for the type checker.
+    """
+
+    dense: DenseEmbedder
+    sparse: SparseEmbedder
+    vectors: VectorIndex
+
+
+# Deterministic namespace so a chunk's point id is stable across re-index passes
+# (same workspace+path+offset → same id → upsert overwrites, never duplicates).
+_POINT_NAMESPACE = uuid.UUID("6f1c8f2e-2d3a-4b5c-8e9f-0a1b2c3d4e5f")
+
+
 class IndexService:
-    def __init__(self, *, store: SymbolStore, parser: Parser) -> None:
+    def __init__(
+        self,
+        *,
+        store: SymbolStore,
+        parser: Parser,
+        embedding: EmbeddingPipeline | None = None,
+    ) -> None:
         self._store = store
         self._parser = parser
+        self._embedding = embedding
 
     async def reindex(
         self,
@@ -40,6 +80,8 @@ class IndexService:
         reader: SourceReader,
     ) -> IndexOutcome:
         await self._store.set_status(workspace_id=workspace_id, status=IndexStatus.BUILDING)
+        if self._embedding is not None:
+            await self._embedding.vectors.ensure_collection(workspace_id)
 
         indexed = await self._store.indexed_hashes(workspace_id)
         desired = self._desired_index(manifest)
@@ -48,6 +90,13 @@ class IndexService:
         await self._store.remove_files(workspace_id=workspace_id, paths=removed)
 
         changed = [path for path, (sha, _) in desired.items() if indexed.get(path) != sha]
+
+        # Clear stale vectors for everything about to change or disappear, in one
+        # pass, before any re-embed — so a crash mid-pass cannot leave duplicates.
+        if self._embedding is not None and (removed or changed):
+            await self._embedding.vectors.delete_by_paths(
+                workspace_id=workspace_id, paths=[*removed, *changed]
+            )
 
         indexed_count = 0
         skipped_count = 0
@@ -117,12 +166,59 @@ class IndexService:
             _logger.warning("index_file_unreadable", workspace_id=str(workspace_id), path=path)
             return False
 
+        # Screen each chunk for injection payloads and capture its text once
+        # (SEC-PI): the flag rides with the chunk into both stores and, at
+        # retrieval, into the provenance frame.
+        screened = [self._screen(chunk, source) for chunk in unit.chunks]
+        chunks = [chunk for chunk, _ in screened]
+
         await self._store.replace_file(
             workspace_id=workspace_id,
             path=path,
             sha256=sha,
             language=language,
             symbols=unit.symbols,
-            chunks=unit.chunks,
+            chunks=chunks,
         )
+        if self._embedding is not None:
+            await self._embed_and_upsert(self._embedding, workspace_id, path, language, screened)
         return True
+
+    @staticmethod
+    def _screen(chunk: CodeChunk, source: bytes) -> tuple[CodeChunk, str]:
+        content = source[chunk.start_byte : chunk.end_byte].decode("utf-8", errors="replace")
+        suspect = looks_like_injection(content)
+        return chunk.model_copy(update={"suspect": suspect}), content
+
+    @staticmethod
+    async def _embed_and_upsert(
+        embedding: EmbeddingPipeline,
+        workspace_id: uuid.UUID,
+        path: str,
+        language: Language,
+        screened: list[tuple[CodeChunk, str]],
+    ) -> None:
+        if not screened:
+            return
+        # Embed the header path together with the body so the qualified name
+        # ("module > Class > method") shapes the vector, not just the code text.
+        texts = [f"{chunk.header_path}\n{content}" for chunk, content in screened]
+        dense = embedding.dense.embed_documents(texts)
+        sparse = embedding.sparse.embed_documents(texts)
+        records = [
+            VectorRecord(
+                point_id=uuid.uuid5(_POINT_NAMESPACE, f"{workspace_id}:{path}:{chunk.start_byte}"),
+                dense=dense_vec,
+                sparse=sparse_vec,
+                path=path,
+                language=language,
+                header_path=chunk.header_path,
+                kind=chunk.kind,
+                start_line=chunk.start_line,
+                end_line=chunk.end_line,
+                content=content,
+                suspect=chunk.suspect,
+            )
+            for (chunk, content), dense_vec, sparse_vec in zip(screened, dense, sparse, strict=True)
+        ]
+        await embedding.vectors.upsert(workspace_id=workspace_id, records=records)

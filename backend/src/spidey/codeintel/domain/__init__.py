@@ -1,3 +1,4 @@
+from spidey.codeintel.domain.framing import frame_hits
 from spidey.codeintel.domain.languages import (
     EXTENSION_LANGUAGE,
     language_for_path,
@@ -10,14 +11,27 @@ from spidey.codeintel.domain.models import (
     Language,
     ManifestEntry,
     ParsedUnit,
+    SearchHit,
     Symbol,
     SymbolKind,
 )
-from spidey.codeintel.domain.ports import Parser, SourceReader, SymbolStore
+from spidey.codeintel.domain.ports import (
+    DenseEmbedder,
+    Parser,
+    SourceReader,
+    SparseEmbedder,
+    SymbolLookup,
+    SymbolStore,
+    VectorIndex,
+    VectorMatch,
+    VectorRecord,
+    VectorSearcher,
+)
 
 __all__ = [
     "EXTENSION_LANGUAGE",
     "CodeChunk",
+    "DenseEmbedder",
     "IndexOutcome",
     "IndexState",
     "IndexStatus",
@@ -25,9 +39,17 @@ __all__ = [
     "ManifestEntry",
     "ParsedUnit",
     "Parser",
+    "SearchHit",
     "SourceReader",
+    "SparseEmbedder",
     "Symbol",
     "SymbolKind",
+    "SymbolLookup",
     "SymbolStore",
+    "VectorIndex",
+    "VectorMatch",
+    "VectorRecord",
+    "VectorSearcher",
+    "frame_hits",
     "language_for_path",
 ]

@@ -58,7 +58,8 @@ class CodeChunk(BaseModel):
 
     Chunks are non-overlapping: a definition that contains nested definitions
     contributes only its own preamble (signature + body up to the first nested
-    definition), and the nested definitions are separate chunks.
+    definition), and the nested definitions are separate chunks. ``suspect`` is
+    set when index-time screening finds an injection-pattern payload (SEC-PI).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -69,6 +70,25 @@ class CodeChunk(BaseModel):
     end_line: int
     start_byte: int
     end_byte: int
+    suspect: bool = False
+
+
+class SearchHit(BaseModel):
+    """One retrieval result with full provenance (docs/06)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    path: str
+    language: Language
+    header_path: str
+    kind: SymbolKind
+    start_line: int
+    end_line: int
+    content: str
+    score: float
+    suspect: bool
+    # How the hit was found: 'dense', 'sparse', 'hybrid', or 'symbol'.
+    source: str
 
 
 class ParsedUnit(BaseModel):

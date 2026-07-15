@@ -23,6 +23,7 @@ from spidey.codeintel.infrastructure.orm import (
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,6 +81,7 @@ class PostgresSymbolStore:
                 end_line=c.end_line,
                 start_byte=c.start_byte,
                 end_byte=c.end_byte,
+                is_suspect=c.suspect,
             )
             for c in chunks
         )
@@ -169,17 +171,32 @@ class PostgresSymbolStore:
         if path is not None:
             query = query.where(SymbolRecord.path == path)
         records = await self._session.scalars(query)
-        return [
-            Symbol(
-                kind=SymbolKind(r.kind),
-                name=r.name,
-                qualified_name=r.qualified_name,
-                parent=r.parent,
-                start_line=r.start_line,
-                end_line=r.end_line,
-                start_byte=r.start_byte,
-                end_byte=r.end_byte,
-                reference=r.reference,
+        return [self._to_symbol(r) for r in records]
+
+    async def symbols_for_terms(
+        self, *, workspace_id: uuid.UUID, terms: Sequence[str]
+    ) -> list[Symbol]:
+        lowered = {t.lower() for t in terms if t}
+        if not lowered:
+            return []
+        records = await self._session.scalars(
+            select(SymbolRecord).where(
+                SymbolRecord.workspace_id == workspace_id,
+                func.lower(SymbolRecord.name).in_(lowered),
             )
-            for r in records
-        ]
+        )
+        return [self._to_symbol(r) for r in records]
+
+    @staticmethod
+    def _to_symbol(r: SymbolRecord) -> Symbol:
+        return Symbol(
+            kind=SymbolKind(r.kind),
+            name=r.name,
+            qualified_name=r.qualified_name,
+            parent=r.parent,
+            start_line=r.start_line,
+            end_line=r.end_line,
+            start_byte=r.start_byte,
+            end_byte=r.end_byte,
+            reference=r.reference,
+        )

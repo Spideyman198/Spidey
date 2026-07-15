@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -96,3 +97,5 @@ class CodeChunkRecord(Base):
     end_line: Mapped[int] = mapped_column(Integer)
     start_byte: Mapped[int] = mapped_column(BigInteger)
     end_byte: Mapped[int] = mapped_column(BigInteger)
+    # Set when index-time screening finds an injection-pattern payload (SEC-PI).
+    is_suspect: Mapped[bool] = mapped_column(Boolean, default=False)
