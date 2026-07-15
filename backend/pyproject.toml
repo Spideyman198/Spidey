@@ -34,6 +34,13 @@ dependencies = [
   "cryptography>=44.0",
   "gitpython>=3.1.43",
   "pathspec>=0.12",
+  "tree-sitter>=0.23",
+  "tree-sitter-python>=0.23",
+  "tree-sitter-javascript>=0.23",
+  "tree-sitter-typescript>=0.23",
+  "tree-sitter-go>=0.23",
+  "tree-sitter-java>=0.23",
+  "tree-sitter-rust>=0.23",
 ]
 
 [dependency-groups]
@@ -154,6 +161,7 @@ forbidden_modules = [
   "spidey.identity",
   "spidey.memory",
   "spidey.workspaces",
+  "spidey.codeintel",
 ]
 
 [[tool.importlinter.contracts]]
@@ -164,7 +172,22 @@ modules = ["spidey.api", "spidey.workers"]
 [[tool.importlinter.contracts]]
 name = "bounded contexts do not import each other's internals"
 type = "independence"
-modules = ["spidey.identity", "spidey.memory", "spidey.evaluation", "spidey.workspaces"]
+modules = [
+  "spidey.identity",
+  "spidey.memory",
+  "spidey.evaluation",
+  "spidey.workspaces",
+  "spidey.codeintel",
+]
+
+[[tool.importlinter.contracts]]
+name = "codeintel is layered: infrastructure -> application -> domain"
+type = "layers"
+layers = [
+  "spidey.codeintel.infrastructure",
+  "spidey.codeintel.application",
+  "spidey.codeintel.domain",
+]
 
 [[tool.importlinter.contracts]]
 name = "workspaces is layered: infrastructure -> application -> domain"
