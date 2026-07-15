@@ -75,6 +75,19 @@ class Settings(BaseSettings):
         default_factory=lambda: ["github.com"]
     )
 
+    # ── Embeddings & vector search (codeintel / llm) ──────────────────────────
+    # Local fastembed models: dense semantic + sparse BM25 (bundled/baked, no
+    # runtime download in production images). Switching the dense model changes
+    # the vector dimension, so it is a re-index event.
+    embedding_model: str = Field(default="BAAI/bge-small-en-v1.5")
+    embedding_dim: int = Field(default=384, ge=1)
+    sparse_embedding_model: str = Field(default="Qdrant/bm25")
+    embedding_batch_size: int = Field(default=64, ge=1, le=512)
+    # Directory holding pre-baked fastembed models (set in the container image).
+    fastembed_cache_path: Path | None = Field(default=None)
+    # Prefix for per-workspace Qdrant collections.
+    qdrant_collection_prefix: str = Field(default="code")
+
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
     otel_service_name: str = Field(default="spidey", min_length=1)
 

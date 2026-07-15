@@ -41,6 +41,8 @@ dependencies = [
   "tree-sitter-go>=0.23",
   "tree-sitter-java>=0.23",
   "tree-sitter-rust>=0.23",
+  "qdrant-client>=1.12",
+  "fastembed>=0.5",
 ]
 
 [dependency-groups]
@@ -162,6 +164,7 @@ forbidden_modules = [
   "spidey.memory",
   "spidey.workspaces",
   "spidey.codeintel",
+  "spidey.llm",
 ]
 
 [[tool.importlinter.contracts]]
@@ -178,6 +181,16 @@ modules = [
   "spidey.evaluation",
   "spidey.workspaces",
   "spidey.codeintel",
+  "spidey.llm",
+]
+
+[[tool.importlinter.contracts]]
+name = "llm is layered: infrastructure -> application -> domain"
+type = "layers"
+layers = [
+  "spidey.llm.infrastructure",
+  "spidey.llm.application",
+  "spidey.llm.domain",
 ]
 
 [[tool.importlinter.contracts]]
