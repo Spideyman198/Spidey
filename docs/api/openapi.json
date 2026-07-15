@@ -207,6 +207,49 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IndexStateResponse": {
+        "properties": {
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "file_count": {
+            "title": "File Count",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IndexStatus"
+          },
+          "symbol_count": {
+            "title": "Symbol Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "file_count",
+          "symbol_count",
+          "chunk_count",
+          "updated_at"
+        ],
+        "title": "IndexStateResponse",
+        "type": "object"
+      },
+      "IndexStatus": {
+        "enum": [
+          "pending",
+          "building",
+          "ready",
+          "failed"
+        ],
+        "title": "IndexStatus",
+        "type": "string"
+      },
       "LivenessReport": {
         "properties": {
           "status": {
@@ -395,6 +438,77 @@
           "updated_at"
         ],
         "title": "SessionResponse",
+        "type": "object"
+      },
+      "SymbolKind": {
+        "description": "Language-neutral symbol categories. Each language maps its native node\ntypes onto this set (docs/06); `import` captures every dependency form.",
+        "enum": [
+          "class",
+          "function",
+          "method",
+          "interface",
+          "struct",
+          "enum",
+          "trait",
+          "import"
+        ],
+        "title": "SymbolKind",
+        "type": "string"
+      },
+      "SymbolResponse": {
+        "properties": {
+          "end_line": {
+            "title": "End Line",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SymbolKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent"
+          },
+          "qualified_name": {
+            "title": "Qualified Name",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "start_line": {
+            "title": "Start Line",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "qualified_name",
+          "parent",
+          "start_line",
+          "end_line",
+          "reference"
+        ],
+        "title": "SymbolResponse",
         "type": "object"
       },
       "TokenResponse": {
@@ -1543,6 +1657,100 @@
         ]
       }
     },
+    "/api/v1/workspaces/{workspace_id}/index": {
+      "get": {
+        "operationId": "get_index_state_api_v1_workspaces__workspace_id__index_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Code-index status for a workspace",
+        "tags": [
+          "workspaces"
+        ]
+      },
+      "post": {
+        "operationId": "reindex_code_api_v1_workspaces__workspace_id__index_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexStateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Re-run code indexing for a workspace",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
     "/api/v1/workspaces/{workspace_id}/ingest": {
       "post": {
         "operationId": "reingest_workspace_api_v1_workspaces__workspace_id__ingest_post",
@@ -1586,6 +1794,74 @@
           }
         ],
         "summary": "Re-run ingestion for a workspace",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/symbols": {
+      "get": {
+        "operationId": "list_symbols_api_v1_workspaces__workspace_id__symbols_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SymbolResponse"
+                  },
+                  "title": "Response List Symbols Api V1 Workspaces  Workspace Id  Symbols Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Extracted symbols for a workspace",
         "tags": [
           "workspaces"
         ]

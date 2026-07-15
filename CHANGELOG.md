@@ -32,3 +32,11 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   detection; per-workspace disk quotas; and owner-scoped workspace APIs. Backed by 224 tests
   (adds SEC-FS junction/symlink/traversal, SSRF, and envelope-encryption attack suites) at ~89%
   coverage.
+- M3 parsing & code index: Tree-sitter parsing for Python, JavaScript, TypeScript, Go, Java, and
+  Rust via a pluggable language registry; symbol extraction (functions, classes, methods,
+  interfaces/structs/enums/traits, imports) with dotted qualified names into a `symbols` index;
+  a non-overlapping, header-path-aware chunker feeding M4 embedding; incremental re-indexing driven
+  by the M2 SHA-256 manifest (only changed files re-parsed, deleted files removed); resource-bounded
+  parsing (wall-clock timeout, size cap, depth limit); ingestion now chains code indexing; and
+  owner-scoped symbol/index-status APIs. Backed by 261 tests (adds per-language extraction and
+  incremental-index suites) at ~90% coverage. Runtime image now includes git for cloning.

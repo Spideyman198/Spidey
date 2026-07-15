@@ -7,11 +7,11 @@ is safe to point at untrusted code, with a human approving every destructive act
 <!-- Badges activate at first push / when pipelines are live — no placeholder-lying badges.
 CI · CodeQL · Coverage (Codecov) · Python 3.12+ · TypeScript · License: Apache-2.0 · SemVer -->
 
-> **Status: M2 complete** — on top of M0/M1 (auth, RBAC, audit, sessions), the platform now ingests
-> repositories from local paths or GitHub (envelope-encrypted PATs, SSRF-guarded clone) into
-> isolated workspaces guarded by a two-layer `SafeFileSystem`, producing `.gitignore`-aware file
-> manifests with SHA-256 change detection. Architecture frozen for v1.0 in the
-> [design review](docs/14-design-review.md). Next: [M3 — parsing & code index](docs/04-milestones.md).
+> **Status: M3 complete** — on top of M0–M2 (auth, RBAC, audit, sessions, workspaces & ingestion),
+> the platform now parses ingested repositories with Tree-sitter across six languages, extracting a
+> qualified-name symbol index and syntax-aware chunks, with incremental re-indexing driven by
+> SHA-256 change detection. Architecture frozen for v1.0 in the
+> [design review](docs/14-design-review.md). Next: [M4 — semantic search](docs/04-milestones.md).
 > Badges, GIFs, and benchmarks appear as their milestones land.
 
 <!-- hero-gif: docs/assets/hero.gif — full run: goal → plan → approval → diff → tests → PR (M12) -->

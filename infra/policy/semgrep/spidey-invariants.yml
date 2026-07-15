@@ -51,4 +51,4 @@ rules:
       - pattern: $P.read_bytes(...)
       - pattern: $P.write_bytes(...)
     paths:
-      include: ["src/spidey/agents", "src/spidey/codeintel"]
+      include: ["**/src/spidey/agents", "**/src/spidey/codeintel"]

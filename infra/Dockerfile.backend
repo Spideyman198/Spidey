@@ -27,11 +27,22 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.12-slim AS runtime
 
+# git is required at runtime for repository ingestion (GitPython shells out to
+# it). Pinned via apt and cleaned up to keep the layer minimal.
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y git \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --gid 10001 spidey \
     && useradd --uid 10001 --gid spidey --no-create-home --shell /usr/sbin/nologin spidey
 
 WORKDIR /app
 COPY --from=builder --chown=spidey:spidey /app /app
+
+# Pre-create the workspaces root owned by the app user. A named volume mounted
+# here inherits this ownership on first initialization, so the non-root process
+# can write ingested trees (the volume would otherwise be root-owned).
+RUN mkdir -p /var/lib/spidey/workspaces && chown -R spidey:spidey /var/lib/spidey
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
