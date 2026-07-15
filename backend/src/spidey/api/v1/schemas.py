@@ -12,6 +12,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from spidey.codeintel.domain.models import IndexStatus, Language, SymbolKind
 from spidey.identity.domain.models import Role
 from spidey.memory.domain.models import MessageAuthor
 from spidey.workspaces.domain.models import RepositorySource, WorkspaceStatus
@@ -121,3 +122,31 @@ class FileManifestEntryResponse(BaseModel):
     size_bytes: int
     is_binary: bool
     indexable: bool
+
+
+class SymbolResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    kind: SymbolKind
+    name: str
+    qualified_name: str
+    parent: str | None
+    start_line: int
+    end_line: int
+    reference: str | None
+
+
+class IndexStateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    status: IndexStatus
+    file_count: int
+    symbol_count: int
+    chunk_count: int
+    updated_at: datetime
+
+
+class LanguageSummary(BaseModel):
+    """Which languages the indexer supports (FR-2.1)."""
+
+    languages: list[Language]

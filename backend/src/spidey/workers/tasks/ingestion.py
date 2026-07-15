@@ -2,7 +2,7 @@
 
 Bridges Celery's synchronous execution to the async ingestion service via a
 fresh event loop per task. The service owns all status transitions and cleanup,
-so the task body is deliberately thin.
+so the task body is deliberately thin. A successful ingest chains code indexing.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from celery import shared_task
 from spidey.platform.audit import AuditLogger
 from spidey.workers.container import get_worker_container
 from spidey.workspaces.application import IngestionService
+from spidey.workspaces.domain.models import WorkspaceStatus
 from spidey.workspaces.infrastructure import GitPythonProvider, PostgresWorkspaceStore
 
 
@@ -31,8 +32,9 @@ def ingest_repository(workspace_id: str) -> None:
 async def _ingest(workspace_id: uuid.UUID) -> None:
     container = get_worker_container()
     async with container.session_factory() as session:
+        store = PostgresWorkspaceStore(session)
         service = IngestionService(
-            store=PostgresWorkspaceStore(session),
+            store=store,
             storage=container.workspace_storage,
             git=GitPythonProvider(container.settings),
             cipher=container.cipher,
@@ -42,3 +44,9 @@ async def _ingest(workspace_id: uuid.UUID) -> None:
         )
         await service.ingest(workspace_id)
         await session.commit()
+        stored = await store.get_with_token(workspace_id=workspace_id)
+        status = stored.workspace.status if stored is not None else None
+
+    # Chain code indexing only on a successful ingest.
+    if status is WorkspaceStatus.READY:
+        container.task_queue.enqueue("spidey.codeintel.index", str(workspace_id), queue="ingestion")

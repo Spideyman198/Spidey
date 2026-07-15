@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # every context directly (unlike the platform kernel). Importing each context's
 # ORM models registers them on the shared Base, so autogenerate and migrations
 # see the whole schema from one metadata object.
+from spidey.codeintel.infrastructure import orm as _codeintel_orm  # noqa: F401
 from spidey.identity.infrastructure import orm as _identity_orm  # noqa: F401
 from spidey.memory.infrastructure import orm as _memory_orm  # noqa: F401
 from spidey.platform import audit as _audit_orm  # noqa: F401

@@ -16,6 +16,7 @@ import httpx
 import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from spidey.codeintel.infrastructure import TreeSitterParser
 from spidey.identity.infrastructure import (
     Argon2PasswordHasher,
     JwtTokenIssuer,
@@ -30,6 +31,7 @@ from spidey.workspaces.infrastructure import GitPythonProvider, LocalWorkspaceSt
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+    from spidey.codeintel.domain.ports import Parser
     from spidey.identity.domain.ports import (
         LockoutStore,
         PasswordHasher,
@@ -83,6 +85,7 @@ class Container:
     workspace_storage: WorkspaceStorage
     git_provider: GitProvider
     task_queue: TaskQueue
+    code_parser: Parser
 
 
 def build_container(settings: Settings) -> Container:
@@ -107,6 +110,7 @@ def build_container(settings: Settings) -> Container:
         workspace_storage=LocalWorkspaceStorage(settings),
         git_provider=GitPythonProvider(settings),
         task_queue=CeleryTaskQueue(settings),
+        code_parser=TreeSitterParser(),
     )
 
 

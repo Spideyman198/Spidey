@@ -10,21 +10,33 @@ the re-ingest endpoint.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Request, status
 
-from spidey.api.deps import CurrentUser, RequireDeveloper, SessionDep, WorkspaceServiceDep
+from spidey.api.deps import (
+    CurrentUser,
+    RequireDeveloper,
+    SessionDep,
+    SymbolStoreDep,
+    WorkspaceServiceDep,
+)
 from spidey.api.v1._request_meta import request_id
 from spidey.api.v1.schemas import (
     CreateWorkspaceRequest,
     FileManifestEntryResponse,
+    IndexStateResponse,
+    SymbolResponse,
     WorkspaceResponse,
 )
+from spidey.codeintel.domain.models import IndexStatus
+from spidey.platform.errors import NotFoundError
 from spidey.workspaces.domain.models import IngestionRequest, WorkspaceStatus
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
 _INGEST_TASK = "spidey.workspaces.ingest"
+_INDEX_TASK = "spidey.codeintel.index"
 
 
 def _enqueue_ingest(request: Request, workspace_id: uuid.UUID) -> None:
@@ -107,6 +119,65 @@ async def reingest_workspace(
     _enqueue_ingest(request, workspace.id)
     return WorkspaceResponse.model_validate(
         workspace.model_copy(update={"status": WorkspaceStatus.INGESTING})
+    )
+
+
+@router.get(
+    "/{workspace_id}/index",
+    response_model=IndexStateResponse,
+    summary="Code-index status for a workspace",
+)
+async def get_index_state(
+    workspace_id: uuid.UUID,
+    user: CurrentUser,
+    workspaces: WorkspaceServiceDep,
+    symbols: SymbolStoreDep,
+) -> IndexStateResponse:
+    await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
+    state = await symbols.get_state(workspace_id)
+    if state is None:
+        raise NotFoundError("workspace has not been indexed")
+    return IndexStateResponse.model_validate(state)
+
+
+@router.get(
+    "/{workspace_id}/symbols",
+    response_model=list[SymbolResponse],
+    summary="Extracted symbols for a workspace",
+)
+async def list_symbols(
+    workspace_id: uuid.UUID,
+    user: CurrentUser,
+    workspaces: WorkspaceServiceDep,
+    symbols: SymbolStoreDep,
+    path: str | None = None,
+) -> list[SymbolResponse]:
+    await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
+    found = await symbols.list_symbols(workspace_id=workspace_id, path=path)
+    return [SymbolResponse.model_validate(s) for s in found]
+
+
+@router.post(
+    "/{workspace_id}/index",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Re-run code indexing for a workspace",
+)
+async def reindex_code(
+    request: Request,
+    workspace_id: uuid.UUID,
+    developer: RequireDeveloper,
+    workspaces: WorkspaceServiceDep,
+) -> IndexStateResponse:
+    await workspaces.get(owner_id=developer.id, workspace_id=workspace_id)  # ownership check
+    request.app.state.container.task_queue.enqueue(
+        _INDEX_TASK, str(workspace_id), queue="ingestion"
+    )
+    return IndexStateResponse(
+        status=IndexStatus.BUILDING,
+        file_count=0,
+        symbol_count=0,
+        chunk_count=0,
+        updated_at=datetime.now(tz=UTC),
     )
 
 
