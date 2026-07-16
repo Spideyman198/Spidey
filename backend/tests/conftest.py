@@ -249,6 +249,7 @@ async def app_client() -> AsyncIterator[httpx.AsyncClient]:
     # Register every context's models on the shared metadata before create_all.
     for module in (
         "spidey.platform.audit",
+        "spidey.platform.events.orm",
         "spidey.identity.infrastructure.orm",
         "spidey.memory.infrastructure.orm",
     ):
