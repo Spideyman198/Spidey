@@ -43,6 +43,7 @@ dependencies = [
   "tree-sitter-rust>=0.23",
   "qdrant-client>=1.12",
   "fastembed>=0.5",
+  "python-ulid>=3.0",
 ]
 
 [dependency-groups]
