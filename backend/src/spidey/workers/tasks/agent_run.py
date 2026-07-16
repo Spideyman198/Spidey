@@ -66,9 +66,7 @@ async def _run(run_id: uuid.UUID) -> None:
                 ],
                 events=events,
             )
-            nodes = GraphNodes(
-                gateway=gateway, registry=registry, store=store, events=events
-            )
+            nodes = GraphNodes(gateway=gateway, registry=registry, store=store, events=events)
             config = {"configurable": {"thread_id": str(run_id)}}
             async with AsyncPostgresSaver.from_conn_string(
                 container.settings.checkpointer_dsn
@@ -80,9 +78,7 @@ async def _run(run_id: uuid.UUID) -> None:
                         initial_state(
                             run_id=str(run_id),
                             owner_id=str(run.owner_id),
-                            workspace_id=(
-                                str(run.workspace_id) if run.workspace_id else None
-                            ),
+                            workspace_id=(str(run.workspace_id) if run.workspace_id else None),
                             goal=run.goal,
                         ),
                         config,
@@ -108,9 +104,7 @@ async def _mark_failed(run_id: uuid.UUID, error: str) -> None:
         run = await store.load(run_id)
         if run is None or is_terminal(run.status):
             return
-        await store.set_status(
-            run_id=run_id, status=RunStatus.FAILED, error=error[:2000]
-        )
+        await store.set_status(run_id=run_id, status=RunStatus.FAILED, error=error[:2000])
         OutboxWriter(session).add(
             EventEnvelope.of(
                 RunStatusChanged(status=RunStatus.FAILED.value),

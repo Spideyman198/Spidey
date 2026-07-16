@@ -158,16 +158,12 @@ async def list_runs(service: RunServiceDep, user: CurrentUser) -> list[RunRespon
 
 
 @router.get("/{run_id}", response_model=RunResponse, summary="Get a run")
-async def get_run(
-    run_id: uuid.UUID, service: RunServiceDep, user: CurrentUser
-) -> RunResponse:
+async def get_run(run_id: uuid.UUID, service: RunServiceDep, user: CurrentUser) -> RunResponse:
     run = await service.get(owner_id=user.id, run_id=run_id)
     return RunResponse.of(run)
 
 
-@router.post(
-    "/{run_id}/cancel", response_model=RunResponse, summary="Cancel a run"
-)
+@router.post("/{run_id}/cancel", response_model=RunResponse, summary="Cancel a run")
 async def cancel_run(
     run_id: uuid.UUID, service: RunServiceDep, developer: RequireDeveloper
 ) -> RunResponse:
@@ -188,12 +184,8 @@ async def resume_run(
 
 
 # ── plan ─────────────────────────────────────────────────────────────────────
-@router.get(
-    "/{run_id}/plan", response_model=PlanResponse, summary="Get a run's plan"
-)
-async def get_plan(
-    run_id: uuid.UUID, service: RunServiceDep, user: CurrentUser
-) -> PlanResponse:
+@router.get("/{run_id}/plan", response_model=PlanResponse, summary="Get a run's plan")
+async def get_plan(run_id: uuid.UUID, service: RunServiceDep, user: CurrentUser) -> PlanResponse:
     plan = await service.get_plan(owner_id=user.id, run_id=run_id)
     if plan is None:
         raise NotFoundError("plan not found")

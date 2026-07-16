@@ -42,9 +42,7 @@ class FakeStore:
     async def set_status(
         self, *, run_id: uuid.UUID, status: RunStatus, error: str | None = None
     ) -> None:
-        self.runs[run_id] = self.runs[run_id].model_copy(
-            update={"status": status, "error": error}
-        )
+        self.runs[run_id] = self.runs[run_id].model_copy(update={"status": status, "error": error})
 
     async def get_budget(self, run_id: uuid.UUID) -> RunBudget | None:
         return self.budgets.get(run_id)

@@ -98,9 +98,7 @@ class _FakeEvents:
 
 
 async def _drive(case: ReplayCase) -> ReplayTimeline:
-    gateway = _FixtureGateway(
-        planner_lines=case.planner_lines, coder_notes=case.coder_notes
-    )
+    gateway = _FixtureGateway(planner_lines=case.planner_lines, coder_notes=case.coder_notes)
     store, events = _FakeStore(), _FakeEvents()
     nodes = GraphNodes(
         gateway=gateway,  # type: ignore[arg-type]

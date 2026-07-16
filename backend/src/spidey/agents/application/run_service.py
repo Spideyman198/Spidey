@@ -41,9 +41,7 @@ _RUN_TASK = "spidey.agents.run"
 
 
 class RunService:
-    def __init__(
-        self, *, store: RunStore, events: EventPublisher, task_queue: TaskQueue
-    ) -> None:
+    def __init__(self, *, store: RunStore, events: EventPublisher, task_queue: TaskQueue) -> None:
         self._store = store
         self._events = events
         self._tasks = task_queue
@@ -126,9 +124,7 @@ class RunService:
         self._enqueue(run_id)
         return resumed
 
-    async def pending_approvals(
-        self, *, owner_id: uuid.UUID, run_id: uuid.UUID
-    ) -> list[Approval]:
+    async def pending_approvals(self, *, owner_id: uuid.UUID, run_id: uuid.UUID) -> list[Approval]:
         await self._require(owner_id, run_id)
         return await self._store.pending_approvals(run_id)
 

@@ -210,9 +210,7 @@ class GraphNodes:
                 run_id=run_id, budget=budget.model_copy(update={"steps_used": 0})
             )
 
-    async def _set_status(
-        self, run_id: uuid.UUID, status: RunStatus, state: RunState
-    ) -> None:
+    async def _set_status(self, run_id: uuid.UUID, status: RunStatus, state: RunState) -> None:
         await self._store.set_status(run_id=run_id, status=status)
         self._emit(RunStatusChanged(status=status.value), state)
 

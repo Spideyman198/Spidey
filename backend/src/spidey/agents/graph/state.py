@@ -23,9 +23,7 @@ class RunState(TypedDict):
     status: str
 
 
-def initial_state(
-    *, run_id: str, owner_id: str, workspace_id: str | None, goal: str
-) -> RunState:
+def initial_state(*, run_id: str, owner_id: str, workspace_id: str | None, goal: str) -> RunState:
     """A fresh run state — every key present so the graph can start cleanly."""
     return RunState(
         run_id=run_id,

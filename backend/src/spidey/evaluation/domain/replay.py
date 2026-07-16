@@ -48,9 +48,7 @@ def diff_timeline(expected: ReplayTimeline, actual: ReplayTimeline) -> list[str]
     if expected.plan != actual.plan:
         diffs.append(f"plan: expected {expected.plan}, got {actual.plan}")
     if expected.transcript != actual.transcript:
-        diffs.append(
-            f"transcript: expected {expected.transcript}, got {actual.transcript}"
-        )
+        diffs.append(f"transcript: expected {expected.transcript}, got {actual.transcript}")
     if expected.events != actual.events:
         diffs.append(f"events: expected {expected.events}, got {actual.events}")
     return diffs

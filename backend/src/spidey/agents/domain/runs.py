@@ -47,9 +47,7 @@ _TRANSITIONS: dict[RunStatus, frozenset[RunStatus]] = {
             RunStatus.CANCELLED,
         }
     ),
-    RunStatus.NEEDS_HUMAN: frozenset(
-        {RunStatus.RUNNING, RunStatus.CANCELLED, RunStatus.FAILED}
-    ),
+    RunStatus.NEEDS_HUMAN: frozenset({RunStatus.RUNNING, RunStatus.CANCELLED, RunStatus.FAILED}),
 }
 
 

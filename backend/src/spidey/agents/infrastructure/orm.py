@@ -65,9 +65,7 @@ class ApprovalRecord(Base):
     __table_args__ = (Index("ix_approvals_run_status", "run_id", "status"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    run_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("runs.id", ondelete="CASCADE"), index=True
-    )
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), index=True)
     tool: Mapped[str] = mapped_column(String(256))
     side_effect: Mapped[str] = mapped_column(String(16))
     arguments_preview: Mapped[str] = mapped_column(Text)

@@ -96,9 +96,7 @@ class PostgresRunStore:
         await self._session.flush()
 
     async def get_plan(self, run_id: uuid.UUID) -> Plan | None:
-        record = await self._session.scalar(
-            select(PlanRecord).where(PlanRecord.run_id == run_id)
-        )
+        record = await self._session.scalar(select(PlanRecord).where(PlanRecord.run_id == run_id))
         if record is None:
             return None
         return Plan(

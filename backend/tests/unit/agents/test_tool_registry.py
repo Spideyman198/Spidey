@@ -82,9 +82,7 @@ def _context(role: Role = Role.DEVELOPER) -> ToolContext:
     return ToolContext(actor_user_id=uuid.uuid4(), role=role, run_id=uuid.uuid4())
 
 
-def _approval(
-    *, tool: str, run_id: uuid.UUID | None, status: ApprovalStatus
-) -> Approval:
+def _approval(*, tool: str, run_id: uuid.UUID | None, status: ApprovalStatus) -> Approval:
     return Approval(
         id=uuid.uuid4(),
         run_id=run_id or uuid.uuid4(),

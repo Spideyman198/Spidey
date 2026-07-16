@@ -14,9 +14,7 @@ _TIMELINE = ReplayTimeline(
 
 
 def _case() -> ReplayCase:
-    return ReplayCase(
-        name="c", goal="g", planner_lines=["a", "b"], expected=_TIMELINE
-    )
+    return ReplayCase(name="c", goal="g", planner_lines=["a", "b"], expected=_TIMELINE)
 
 
 def test_diff_timeline_identical_is_empty() -> None:
