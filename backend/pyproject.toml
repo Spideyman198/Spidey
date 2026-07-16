@@ -104,9 +104,6 @@ ignore = [
 # heuristic on their variable names — not credentials.
 "src/spidey/platform/audit.py" = ["S105"]
 "src/spidey/identity/infrastructure/redis_guard.py" = ["S105"]
-# Recursive-CTE traversals interpolate only trusted internal constants (walk
-# direction and enum-sourced edge kinds); all user values are bound parameters.
-"src/spidey/codeintel/infrastructure/graph_store.py" = ["S608"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["spidey"]

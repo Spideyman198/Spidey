@@ -30,65 +30,100 @@ if TYPE_CHECKING:
 
     from spidey.codeintel.domain.models import GraphEdge
 
-# Node reached at ``depth`` hops, plus the predecessor it was reached through.
-_SELECT_TAIL = """
-SELECT DISTINCT ON (w.node_id)
-       n.path AS path, n.qualified_name AS qualified_name, n.name AS name,
-       n.kind AS kind, n.start_line AS start_line,
-       w.edge_kind AS edge_kind, w.depth AS depth, w.line AS line,
-       w.outgoing AS outgoing, v.path AS via_path, v.qualified_name AS via_qn
-  FROM walk w
-  JOIN graph_nodes n ON n.id = w.node_id
-  JOIN graph_nodes v ON v.id = w.via_id
- ORDER BY w.node_id, w.depth
- LIMIT :limit
-"""
+# The traversals are four concrete, fully static queries. They are written out
+# in full — no string building of any kind — so no value ever reaches SQL except
+# as a bound parameter (:ws/:path/:qn/:depth/:limit). This is deliberately not
+# DRY: it makes SQL-injection impossibility obvious to a human and to every SAST
+# scanner, which a dynamically assembled query cannot. Each projects the reached
+# node, the edge, the hop distance, and the predecessor (for directional facts).
+#
+# Directions: callees walk src→dst over `calls` (outgoing); callers/impact walk
+# dst→src (incoming); impact also follows `inherits` (subtype is affected);
+# neighborhood walks either direction over any edge. Every walk is bounded by
+# :depth, a visited-node array (cycle termination), and :limit.
 
-
-def _directional_sql(*, reverse: bool, kinds_clause: str) -> str:
-    """Recursive CTE that walks ``calls``/``inherits`` edges one way.
-
-    Forward = src→dst (callees, ``outgoing`` true); reverse = dst→src
-    (callers/impact, ``outgoing`` false).
-    """
-    if reverse:
-        anchor, nxt, via, rec_join, guard, outgoing = (
-            "e.dst_id = s.id",
-            "e.src_id",
-            "e.dst_id",
-            "e.dst_id = w.node_id",
-            "e.src_id",
-            "false",
-        )
-    else:
-        anchor, nxt, via, rec_join, guard, outgoing = (
-            "e.src_id = s.id",
-            "e.dst_id",
-            "e.src_id",
-            "e.src_id = w.node_id",
-            "e.dst_id",
-            "true",
-        )
-    return f"""
+_CALLEES_SQL = """
     WITH RECURSIVE seed AS (
         SELECT id FROM graph_nodes
          WHERE workspace_id = :ws AND path = :path AND qualified_name = :qn
     ),
     walk (node_id, via_id, edge_kind, depth, line, outgoing, visited) AS (
-        SELECT {nxt}, {via}, e.kind, 1, e.line, {outgoing}, ARRAY[{via}, {nxt}]
-          FROM graph_edges e JOIN seed s ON {anchor}
-         WHERE e.workspace_id = :ws AND e.kind IN ({kinds_clause})
+        SELECT e.dst_id, e.src_id, e.kind, 1, e.line, true, ARRAY[e.src_id, e.dst_id]
+          FROM graph_edges e JOIN seed s ON e.src_id = s.id
+         WHERE e.workspace_id = :ws AND e.kind = 'calls'
         UNION ALL
-        SELECT {nxt}, {via}, e.kind, w.depth + 1, e.line, {outgoing}, w.visited || {nxt}
-          FROM graph_edges e JOIN walk w ON {rec_join}
-         WHERE e.workspace_id = :ws AND e.kind IN ({kinds_clause})
-           AND w.depth < :depth AND {guard} <> ALL(w.visited)
+        SELECT e.dst_id, e.src_id, e.kind, w.depth + 1, e.line, true, w.visited || e.dst_id
+          FROM graph_edges e JOIN walk w ON e.src_id = w.node_id
+         WHERE e.workspace_id = :ws AND e.kind = 'calls'
+           AND w.depth < :depth AND e.dst_id <> ALL(w.visited)
     )
-    {_SELECT_TAIL}
-    """
+    SELECT DISTINCT ON (w.node_id)
+           n.path AS path, n.qualified_name AS qualified_name, n.name AS name,
+           n.kind AS kind, n.start_line AS start_line,
+           w.edge_kind AS edge_kind, w.depth AS depth, w.line AS line,
+           w.outgoing AS outgoing, v.path AS via_path, v.qualified_name AS via_qn
+      FROM walk w
+      JOIN graph_nodes n ON n.id = w.node_id
+      JOIN graph_nodes v ON v.id = w.via_id
+     ORDER BY w.node_id, w.depth
+     LIMIT :limit
+"""
 
+_CALLERS_SQL = """
+    WITH RECURSIVE seed AS (
+        SELECT id FROM graph_nodes
+         WHERE workspace_id = :ws AND path = :path AND qualified_name = :qn
+    ),
+    walk (node_id, via_id, edge_kind, depth, line, outgoing, visited) AS (
+        SELECT e.src_id, e.dst_id, e.kind, 1, e.line, false, ARRAY[e.dst_id, e.src_id]
+          FROM graph_edges e JOIN seed s ON e.dst_id = s.id
+         WHERE e.workspace_id = :ws AND e.kind = 'calls'
+        UNION ALL
+        SELECT e.src_id, e.dst_id, e.kind, w.depth + 1, e.line, false, w.visited || e.src_id
+          FROM graph_edges e JOIN walk w ON e.dst_id = w.node_id
+         WHERE e.workspace_id = :ws AND e.kind = 'calls'
+           AND w.depth < :depth AND e.src_id <> ALL(w.visited)
+    )
+    SELECT DISTINCT ON (w.node_id)
+           n.path AS path, n.qualified_name AS qualified_name, n.name AS name,
+           n.kind AS kind, n.start_line AS start_line,
+           w.edge_kind AS edge_kind, w.depth AS depth, w.line AS line,
+           w.outgoing AS outgoing, v.path AS via_path, v.qualified_name AS via_qn
+      FROM walk w
+      JOIN graph_nodes n ON n.id = w.node_id
+      JOIN graph_nodes v ON v.id = w.via_id
+     ORDER BY w.node_id, w.depth
+     LIMIT :limit
+"""
 
-_NEIGHBORHOOD_SQL = f"""
+_IMPACT_SQL = """
+    WITH RECURSIVE seed AS (
+        SELECT id FROM graph_nodes
+         WHERE workspace_id = :ws AND path = :path AND qualified_name = :qn
+    ),
+    walk (node_id, via_id, edge_kind, depth, line, outgoing, visited) AS (
+        SELECT e.src_id, e.dst_id, e.kind, 1, e.line, false, ARRAY[e.dst_id, e.src_id]
+          FROM graph_edges e JOIN seed s ON e.dst_id = s.id
+         WHERE e.workspace_id = :ws AND e.kind IN ('calls', 'inherits')
+        UNION ALL
+        SELECT e.src_id, e.dst_id, e.kind, w.depth + 1, e.line, false, w.visited || e.src_id
+          FROM graph_edges e JOIN walk w ON e.dst_id = w.node_id
+         WHERE e.workspace_id = :ws AND e.kind IN ('calls', 'inherits')
+           AND w.depth < :depth AND e.src_id <> ALL(w.visited)
+    )
+    SELECT DISTINCT ON (w.node_id)
+           n.path AS path, n.qualified_name AS qualified_name, n.name AS name,
+           n.kind AS kind, n.start_line AS start_line,
+           w.edge_kind AS edge_kind, w.depth AS depth, w.line AS line,
+           w.outgoing AS outgoing, v.path AS via_path, v.qualified_name AS via_qn
+      FROM walk w
+      JOIN graph_nodes n ON n.id = w.node_id
+      JOIN graph_nodes v ON v.id = w.via_id
+     ORDER BY w.node_id, w.depth
+     LIMIT :limit
+"""
+
+_NEIGHBORHOOD_SQL = """
     WITH RECURSIVE seed AS (
         SELECT id FROM graph_nodes
          WHERE workspace_id = :ws AND path = :path AND qualified_name = :qn
@@ -107,13 +142,17 @@ _NEIGHBORHOOD_SQL = f"""
          WHERE e.workspace_id = :ws AND w.depth < :depth
            AND (CASE WHEN e.src_id = w.node_id THEN e.dst_id ELSE e.src_id END) <> ALL(w.visited)
     )
-    {_SELECT_TAIL}
+    SELECT DISTINCT ON (w.node_id)
+           n.path AS path, n.qualified_name AS qualified_name, n.name AS name,
+           n.kind AS kind, n.start_line AS start_line,
+           w.edge_kind AS edge_kind, w.depth AS depth, w.line AS line,
+           w.outgoing AS outgoing, v.path AS via_path, v.qualified_name AS via_qn
+      FROM walk w
+      JOIN graph_nodes n ON n.id = w.node_id
+      JOIN graph_nodes v ON v.id = w.via_id
+     ORDER BY w.node_id, w.depth
+     LIMIT :limit
 """
-
-
-def _kinds_clause(kinds: Sequence[EdgeKind]) -> str:
-    # EdgeKind values are a fixed, trusted enum — safe to inline (never user text).
-    return ", ".join(f"'{k.value}'" for k in kinds)
 
 
 class PostgresGraphStore:
@@ -217,40 +256,17 @@ class PostgresGraphStore:
     async def callers(
         self, *, workspace_id: uuid.UUID, path: str, qualified_name: str, depth: int, limit: int
     ) -> list[GraphNeighbor]:
-        return await self._run(
-            _directional_sql(reverse=True, kinds_clause=_kinds_clause([EdgeKind.CALLS])),
-            workspace_id,
-            path,
-            qualified_name,
-            depth,
-            limit,
-        )
+        return await self._run(_CALLERS_SQL, workspace_id, path, qualified_name, depth, limit)
 
     async def callees(
         self, *, workspace_id: uuid.UUID, path: str, qualified_name: str, depth: int, limit: int
     ) -> list[GraphNeighbor]:
-        return await self._run(
-            _directional_sql(reverse=False, kinds_clause=_kinds_clause([EdgeKind.CALLS])),
-            workspace_id,
-            path,
-            qualified_name,
-            depth,
-            limit,
-        )
+        return await self._run(_CALLEES_SQL, workspace_id, path, qualified_name, depth, limit)
 
     async def impact_set(
         self, *, workspace_id: uuid.UUID, path: str, qualified_name: str, depth: int, limit: int
     ) -> list[GraphNeighbor]:
-        return await self._run(
-            _directional_sql(
-                reverse=True, kinds_clause=_kinds_clause([EdgeKind.CALLS, EdgeKind.INHERITS])
-            ),
-            workspace_id,
-            path,
-            qualified_name,
-            depth,
-            limit,
-        )
+        return await self._run(_IMPACT_SQL, workspace_id, path, qualified_name, depth, limit)
 
     async def neighborhood(
         self, *, workspace_id: uuid.UUID, path: str, qualified_name: str, depth: int, limit: int
