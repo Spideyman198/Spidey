@@ -14,6 +14,7 @@ from spidey.codeintel.domain.models import (
     Language,
     ManifestEntry,
     ParsedUnit,
+    Reference,
     Symbol,
     SymbolKind,
 )
@@ -75,6 +76,7 @@ class FakeStore:
         self.hashes: dict[str, str] = {}
         self.symbols: dict[str, list[Symbol]] = {}
         self.chunks: dict[str, list[CodeChunk]] = {}
+        self.stored_refs: dict[str, list[Reference]] = {}
         self.status: IndexStatus = IndexStatus.PENDING
 
     async def indexed_hashes(self, workspace_id: uuid.UUID) -> dict[str, str]:
@@ -89,16 +91,19 @@ class FakeStore:
         language: Language,
         symbols: list[Symbol],
         chunks: list[CodeChunk],
+        references: list[Reference],
     ) -> None:
         self.hashes[path] = sha256
         self.symbols[path] = symbols
         self.chunks[path] = chunks
+        self.stored_refs[path] = references
 
     async def remove_files(self, *, workspace_id: uuid.UUID, paths: list[str]) -> None:
         for path in paths:
             self.hashes.pop(path, None)
             self.symbols.pop(path, None)
             self.chunks.pop(path, None)
+            self.stored_refs.pop(path, None)
 
     async def set_status(
         self,
@@ -130,6 +135,12 @@ class FakeStore:
         self, *, workspace_id: uuid.UUID, terms: Sequence[str]
     ) -> list[Symbol]:
         return []
+
+    async def symbols_with_paths(self, workspace_id: uuid.UUID) -> list[tuple[str, Symbol]]:
+        return [(path, s) for path, syms in self.symbols.items() for s in syms]
+
+    async def references(self, workspace_id: uuid.UUID) -> list[tuple[str, Reference]]:
+        return [(path, r) for path, refs in self.stored_refs.items() for r in refs]
 
 
 async def _reindex(

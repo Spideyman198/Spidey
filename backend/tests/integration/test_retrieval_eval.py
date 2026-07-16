@@ -53,7 +53,7 @@ def _load_golden() -> tuple[list[RetrievalCase], int]:
 async def _ingest_and_index(client: httpx.AsyncClient, token: str) -> str:
     from spidey.codeintel.application import EmbeddingPipeline, IndexService
     from spidey.codeintel.domain.models import ManifestEntry
-    from spidey.codeintel.infrastructure import PostgresSymbolStore
+    from spidey.codeintel.infrastructure import PostgresGraphStore, PostgresSymbolStore
     from spidey.platform.audit import AuditLogger
     from spidey.workers.adapters import WorkspaceSourceReader
     from spidey.workspaces.application import IngestionService
@@ -95,6 +95,7 @@ async def _ingest_and_index(client: httpx.AsyncClient, token: str) -> str:
                 sparse=container.sparse_embedder,
                 vectors=container.vector_index,
             ),
+            graph=PostgresGraphStore(session),
         ).reindex(workspace_id=wid, manifest=manifest, reader=reader)
         await session.commit()
     return str(wid)
