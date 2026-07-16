@@ -62,3 +62,33 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   eval, re-run with the graph built, shows expansion holds ranked-hit quality at the M4 baselines
   (the milestone's eval-driven exit criterion). Backed by new graph-builder, graph-store traversal,
   graph-flow, and graph-API suites.
+- M6 provider gateway, tool plane & MCP, event backbone: a first-party **LLM gateway** (ADR-0009/0012)
+  — provider-neutral chat types behind a `ChatModel` seam, three adapters covering six targets
+  (`anthropic`, one `openai_compatible` for OpenAI/Ollama/vLLM/Azure, `gemini`), a config-only routing
+  table with fallback chains, and one middleware seam that enforces retries+backoff, per-scope token/
+  cost budgets, response caching, usage metering, and redacted interaction capture for replay —
+  un-bypassable because callers never hold an adapter. A **tool plane** (ADR-0010, docs/05): the
+  `ToolRegistry` single choke point (RBAC, JSON-Schema validation, side-effect gating [read-only until
+  M7 approvals], timeout, non-trusted-output sanitization, events), native code-search tool, the
+  **Spidey MCP server** (serves the registry with REST-identical authZ), and safe **external-MCP
+  consuming** with tool-set pinning + drift alarms (rug-pull defense) and description injection-screening
+  (tool-poisoning defense). An **event backbone** (docs/08): versioned envelope + transactional outbox →
+  Redis-Streams relay → persister/metrics consumer groups, and a cursor-resumable **SSE** run stream
+  (ADR-0006). Tied together by a scripted-chat vertical slice (user → gateway → tool round-trip →
+  events → SSE) proven end to end offline; live multi-provider conformance runs key-gated in CI. Adds
+  the `agents` orchestrator context and migrations for the event plane and `llm_interactions`.
+- M7 agent runtime: durable, resumable **runs** on an explicit **LangGraph** state machine
+  (ADR-0002) — `plan → approve → execute* → finalize`, compiled with a Postgres checkpointer so a
+  pause survives an API/worker restart. A structured, **human-editable plan** with a mandatory
+  **approval gate**: the run drafts a plan and blocks (a durable `interrupt`) until the owner
+  resumes, optionally after editing the steps. **Per-run budgets** (steps/tokens/cost) that halt a
+  runaway into `needs_human` rather than spending unbounded (NFR-5), with a human-granted fresh
+  window to continue. The **side-effect approval invariant** at the `ToolRegistry` choke point: a
+  write/destructive tool runs only against a resolved, `approved` `Approval` scoped to that exact
+  tool and run — a grant is never transferable, and reads are the only un-gated path. A run-lifecycle
+  control surface (`RunService`) and owner-scoped REST endpoints (create/list/get/cancel/resume,
+  plan get/edit, approvals list/resolve) over the shared SSE stream. **Deterministic replay** as the
+  M7 exit criterion: a `T1`, LLM-free golden-replay suite reconstructs a run's timeline (plan,
+  transcript, status, event sequence) from committed fixtures and fails on any non-determinism or
+  drift. Adds `runs`/`plans`/`approvals` tables (LangGraph's own checkpoint tables are created and
+  owned by the checkpointer, not Alembic) and the `psycopg[binary]` driver for it.

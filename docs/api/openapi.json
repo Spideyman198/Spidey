@@ -1,6 +1,105 @@
 {
   "components": {
     "schemas": {
+      "ApprovalResponse": {
+        "properties": {
+          "arguments_preview": {
+            "title": "Arguments Preview",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "side_effect": {
+            "title": "Side Effect",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "tool",
+          "side_effect",
+          "arguments_preview",
+          "status",
+          "requested_at",
+          "decided_at",
+          "decided_by"
+        ],
+        "title": "ApprovalResponse",
+        "type": "object"
+      },
+      "BudgetRequest": {
+        "description": "Optional per-run ceilings; omitted fields fall back to the run defaults.",
+        "properties": {
+          "max_cost_usd": {
+            "default": 5.0,
+            "exclusiveMinimum": 0.0,
+            "maximum": 100.0,
+            "title": "Max Cost Usd",
+            "type": "number"
+          },
+          "max_steps": {
+            "default": 25,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "max_tokens": {
+            "default": 500000,
+            "minimum": 1000.0,
+            "title": "Max Tokens",
+            "type": "integer"
+          }
+        },
+        "title": "BudgetRequest",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -21,6 +120,45 @@
           "new_password"
         ],
         "title": "ChangePasswordRequest",
+        "type": "object"
+      },
+      "ChatStartRequest": {
+        "properties": {
+          "message": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ChatStartRequest",
         "type": "object"
       },
       "ComponentHealth": {
@@ -69,6 +207,55 @@
           "content"
         ],
         "title": "CreateMessageRequest",
+        "type": "object"
+      },
+      "CreateRunRequest": {
+        "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "goal": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Goal",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "goal"
+        ],
+        "title": "CreateRunRequest",
         "type": "object"
       },
       "CreateSessionRequest": {
@@ -171,6 +358,24 @@
         ],
         "title": "EdgeKind",
         "type": "string"
+      },
+      "EditPlanRequest": {
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStepModel"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "steps"
+        ],
+        "title": "EditPlanRequest",
+        "type": "object"
       },
       "FileManifestEntryResponse": {
         "properties": {
@@ -459,6 +664,57 @@
         "title": "MessageResponse",
         "type": "object"
       },
+      "PlanResponse": {
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStepModel"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "steps"
+        ],
+        "title": "PlanResponse",
+        "type": "object"
+      },
+      "PlanStepModel": {
+        "properties": {
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "status": {
+            "default": "pending",
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "title"
+        ],
+        "title": "PlanStepModel",
+        "type": "object"
+      },
       "ReadinessReport": {
         "properties": {
           "components": {
@@ -523,6 +779,19 @@
         "title": "RepositorySource",
         "type": "string"
       },
+      "ResolveApprovalRequest": {
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "approved"
+        ],
+        "title": "ResolveApprovalRequest",
+        "type": "object"
+      },
       "Role": {
         "description": "RBAC roles, strictly ordered: each includes the ones below it.",
         "enum": [
@@ -531,6 +800,113 @@
           "viewer"
         ],
         "title": "Role",
+        "type": "string"
+      },
+      "RunCreatedResponse": {
+        "properties": {
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "title": "RunCreatedResponse",
+        "type": "object"
+      },
+      "RunResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "goal": {
+            "title": "Goal",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "owner_id": {
+            "format": "uuid",
+            "title": "Owner Id",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          }
+        },
+        "required": [
+          "id",
+          "owner_id",
+          "workspace_id",
+          "session_id",
+          "goal",
+          "status",
+          "error",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RunResponse",
+        "type": "object"
+      },
+      "RunStatus": {
+        "enum": [
+          "pending",
+          "planning",
+          "awaiting_approval",
+          "running",
+          "needs_human",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "RunStatus",
         "type": "string"
       },
       "SearchHitResponse": {
@@ -726,6 +1102,48 @@
           "reference"
         ],
         "title": "SymbolResponse",
+        "type": "object"
+      },
+      "TimelineEvent": {
+        "properties": {
+          "actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          }
+        },
+        "required": [
+          "event_id",
+          "event_type",
+          "occurred_at",
+          "actor",
+          "payload"
+        ],
+        "title": "TimelineEvent",
         "type": "object"
       },
       "TokenResponse": {
@@ -1166,6 +1584,335 @@
         ]
       }
     },
+    "/api/v1/runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunResponse"
+                  },
+                  "title": "Response List Runs Api V1 Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List my runs",
+        "tags": [
+          "runs"
+        ]
+      },
+      "post": {
+        "operationId": "create_run_api_v1_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create an agent run (streams at /runs/{run_id}/events)",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/chat": {
+      "post": {
+        "operationId": "start_chat_api_v1_runs_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunCreatedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start a scripted chat run (streams at /runs/{run_id}/events)",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get a run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/approvals": {
+      "get": {
+        "operationId": "list_approvals_api_v1_runs__run_id__approvals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApprovalResponse"
+                  },
+                  "title": "Response List Approvals Api V1 Runs  Run Id  Approvals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List a run's pending side-effect approvals",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/approvals/{approval_id}": {
+      "post": {
+        "operationId": "resolve_approval_api_v1_runs__run_id__approvals__approval_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveApprovalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve or reject a pending side-effect",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/cancel": {
+      "post": {
+        "operationId": "cancel_run_api_v1_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel a run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
     "/api/v1/runs/{run_id}/events": {
       "get": {
         "operationId": "stream_run_events_api_v1_runs__run_id__events_get",
@@ -1218,6 +1965,210 @@
           }
         ],
         "summary": "Stream a run's events (SSE)",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/plan": {
+      "get": {
+        "operationId": "get_plan_api_v1_runs__run_id__plan_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get a run's plan",
+        "tags": [
+          "runs"
+        ]
+      },
+      "put": {
+        "operationId": "edit_plan_api_v1_runs__run_id__plan_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit a run's plan before execution",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/resume": {
+      "post": {
+        "operationId": "resume_run_api_v1_runs__run_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resume a paused run (plan approved / budget lifted)",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/timeline": {
+      "get": {
+        "operationId": "get_timeline_api_v1_runs__run_id__timeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TimelineEvent"
+                  },
+                  "title": "Response Get Timeline Api V1 Runs  Run Id  Timeline Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reconstruct a run's persisted event timeline (replay/audit)",
         "tags": [
           "runs"
         ]
