@@ -86,6 +86,42 @@ class RunCompleted(EventPayload):
     reason: str | None = None
 
 
+# ── agents runtime (M7) ────────────────────────────────────────────────────────
+class RunStarted(EventPayload):
+    event_type: ClassVar[str] = "agents.run_started"
+
+    goal: str
+
+
+class RunStatusChanged(EventPayload):
+    event_type: ClassVar[str] = "agents.run_status_changed"
+
+    status: str
+    reason: str | None = None
+
+
+class PlanCreated(EventPayload):
+    event_type: ClassVar[str] = "agents.plan_created"
+
+    version: int
+    step_count: int
+
+
+class ApprovalRequested(EventPayload):
+    event_type: ClassVar[str] = "agents.approval_requested"
+
+    approval_id: uuid.UUID
+    tool: str
+    side_effect: str
+
+
+class ApprovalResolved(EventPayload):
+    event_type: ClassVar[str] = "agents.approval_resolved"
+
+    approval_id: uuid.UUID
+    approved: bool
+
+
 # Registry: event_type → payload model, for re-validation on read (replay/SSE).
 EVENT_TYPES: dict[str, type[EventPayload]] = {
     payload.event_type: payload
@@ -95,6 +131,11 @@ EVENT_TYPES: dict[str, type[EventPayload]] = {
         ToolInvocationCompleted,
         MessageReceived,
         RunCompleted,
+        RunStarted,
+        RunStatusChanged,
+        PlanCreated,
+        ApprovalRequested,
+        ApprovalResolved,
     )
 }
 

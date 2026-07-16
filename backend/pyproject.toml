@@ -44,6 +44,14 @@ dependencies = [
   "qdrant-client>=1.12",
   "fastembed>=0.5",
   "python-ulid>=3.0",
+  "anthropic>=0.40",
+  "openai>=1.60",
+  "google-genai>=0.8",
+  "jsonschema>=4.23",
+  "mcp>=1.2",
+  "langgraph>=0.2.60",
+  "langgraph-checkpoint-postgres>=2.0",
+  "psycopg[binary]>=3.3.4",
 ]
 
 [dependency-groups]
@@ -166,6 +174,7 @@ forbidden_modules = [
   "spidey.workspaces",
   "spidey.codeintel",
   "spidey.llm",
+  "spidey.agents",
 ]
 
 [[tool.importlinter.contracts]]
@@ -237,4 +246,17 @@ layers = [
   "spidey.evaluation.infrastructure",
   "spidey.evaluation.application",
   "spidey.evaluation.domain",
+]
+
+# agents is the orchestrator: layered like the rest, but deliberately NOT in the
+# bounded-context independence set — it composes the leaf contexts (they never
+# depend on it).
+[[tool.importlinter.contracts]]
+name = "agents is layered: infrastructure -> graph -> application -> domain"
+type = "layers"
+layers = [
+  "spidey.agents.infrastructure",
+  "spidey.agents.graph",
+  "spidey.agents.application",
+  "spidey.agents.domain",
 ]

@@ -14,7 +14,16 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AnyHttpUrl, Field, PostgresDsn, RedisDsn, SecretStr, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PostgresDsn,
+    RedisDsn,
+    SecretStr,
+    field_validator,
+)
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -30,6 +39,40 @@ class LogLevel(StrEnum):
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
+
+
+class ModelRefSetting(BaseModel):
+    """A (provider, model) reference in the routing table. ``provider`` matches an
+    ``llm`` ProviderName value; the composition root resolves it to an adapter."""
+
+    model_config = ConfigDict(frozen=True)
+
+    provider: str
+    model: str
+
+
+class RouteSetting(ModelRefSetting):
+    """One role's route: primary (provider, model) + params + fallback chain."""
+
+    max_tokens: int = 1024
+    temperature: float = 0.0
+    fallbacks: list[ModelRefSetting] = Field(default_factory=list[ModelRefSetting])
+
+
+def _default_routes() -> dict[str, RouteSetting]:
+    frontier = "claude-sonnet-5"
+    cheap = ModelRefSetting(provider="openai_compatible", model="gpt-4o-mini")
+    return {
+        "planner": RouteSetting(provider="anthropic", model=frontier),
+        "coder": RouteSetting(provider="anthropic", model=frontier),
+        "reviewer": RouteSetting(provider="anthropic", model=frontier),
+        "summarizer": RouteSetting(
+            provider="anthropic", model="claude-haiku-4-5-20251001", fallbacks=[cheap]
+        ),
+        "chat": RouteSetting(
+            provider="anthropic", model="claude-haiku-4-5-20251001", fallbacks=[cheap]
+        ),
+    }
 
 
 class Settings(BaseSettings):
@@ -102,6 +145,24 @@ class Settings(BaseSettings):
     graph_expansion_seeds: int = Field(default=5, ge=1, le=50)
     graph_expansion_max_facts: int = Field(default=15, ge=1, le=100)
 
+    # ── LLM gateway (llm context, M6) ─────────────────────────────────────────
+    # Provider credentials. Absent → that provider is simply not registered; a
+    # role routed only to it fails fast rather than degrading silently.
+    anthropic_api_key: SecretStr | None = Field(default=None)
+    openai_api_key: SecretStr | None = Field(default=None)
+    # Base URL points the one OpenAI-compatible adapter at OpenAI, Ollama, vLLM,
+    # or Azure (ADR-0012). None → the SDK default (OpenAI).
+    openai_base_url: str | None = Field(default=None)
+    gemini_api_key: SecretStr | None = Field(default=None)
+    # Role → route table. Switching a role's provider is a config change only.
+    llm_routes: dict[str, RouteSetting] = Field(default_factory=_default_routes)
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
+    # Response cache (deterministic calls only) and per-scope budgets (NFR-5).
+    llm_cache_ttl_seconds: int = Field(default=3600, ge=0)
+    llm_budget_max_tokens: int = Field(default=2_000_000, ge=1)
+    llm_budget_max_cost_usd: float = Field(default=25.0, gt=0)
+    llm_budget_window_seconds: int = Field(default=86_400, ge=60)
+
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
     otel_service_name: str = Field(default="spidey", min_length=1)
 
@@ -141,6 +202,12 @@ class Settings(BaseSettings):
     @property
     def database_dsn(self) -> str:
         return str(self.database_url)
+
+    @property
+    def checkpointer_dsn(self) -> str:
+        """Plain ``postgresql://`` DSN for the LangGraph checkpointer (psycopg),
+        which does not use the SQLAlchemy ``+asyncpg`` driver suffix."""
+        return str(self.database_url).replace("+asyncpg", "")
 
     @property
     def redis_dsn(self) -> str:

@@ -24,7 +24,17 @@ from spidey.identity.infrastructure import (
     RedisLockoutStore,
     RedisRateLimiter,
 )
-from spidey.llm.infrastructure import FastembedDenseEmbedder, FastembedSparseEmbedder
+from spidey.llm.application import ProviderRegistry
+from spidey.llm.domain import ModelRef, ProviderName, Role, RouteConfig
+from spidey.llm.infrastructure import (
+    AnthropicFactory,
+    FastembedDenseEmbedder,
+    FastembedSparseEmbedder,
+    GeminiFactory,
+    OpenAiCompatibleFactory,
+    RedisBudgetLedger,
+    RedisResponseCache,
+)
 from spidey.platform.db import create_session_factory
 from spidey.platform.events import StreamBus
 from spidey.platform.security import SecretCipher
@@ -46,9 +56,45 @@ if TYPE_CHECKING:
         RateLimiter,
         TokenIssuer,
     )
-    from spidey.platform.config import Settings
+    from spidey.llm.application.registry import ChatModelFactory
+    from spidey.llm.domain.ports import BudgetLedger, ResponseCache
+    from spidey.platform.config import RouteSetting, Settings
     from spidey.platform.tasks import TaskQueue
     from spidey.workspaces.domain.ports import GitProvider, WorkspaceStorage
+
+
+def build_provider_registry(settings: Settings) -> ProviderRegistry:
+    """Assemble the provider registry from config: a factory per provider that has
+    credentials, and the role→route table (ADR-0012)."""
+    factories: dict[ProviderName, ChatModelFactory] = {}
+    if settings.anthropic_api_key is not None:
+        factories[ProviderName.ANTHROPIC] = AnthropicFactory(
+            api_key=settings.anthropic_api_key.get_secret_value()
+        )
+    if settings.openai_api_key is not None:
+        factories[ProviderName.OPENAI_COMPATIBLE] = OpenAiCompatibleFactory(
+            api_key=settings.openai_api_key.get_secret_value(),
+            base_url=settings.openai_base_url,
+        )
+    if settings.gemini_api_key is not None:
+        factories[ProviderName.GEMINI] = GeminiFactory(
+            api_key=settings.gemini_api_key.get_secret_value()
+        )
+    routes = {Role(role): _to_route(rs) for role, rs in settings.llm_routes.items()}
+    return ProviderRegistry(factories=factories, routes=routes)
+
+
+def _to_route(setting: RouteSetting) -> RouteConfig:
+    return RouteConfig(
+        provider=ProviderName(setting.provider),
+        model=setting.model,
+        max_tokens=setting.max_tokens,
+        temperature=setting.temperature,
+        fallbacks=[
+            ModelRef(provider=ProviderName(ref.provider), model=ref.model)
+            for ref in setting.fallbacks
+        ],
+    )
 
 
 def create_database_engine(settings: Settings) -> AsyncEngine:
@@ -106,6 +152,9 @@ class Container:
     qdrant_client: AsyncQdrantClient
     vector_index: VectorIndex
     stream_bus: StreamBus
+    llm_registry: ProviderRegistry
+    response_cache: ResponseCache
+    budget_ledger: BudgetLedger
 
 
 def build_container(settings: Settings) -> Container:
@@ -154,6 +203,14 @@ def build_container(settings: Settings) -> Container:
             dense_dim=settings.embedding_dim,
         ),
         stream_bus=StreamBus(redis),
+        llm_registry=build_provider_registry(settings),
+        response_cache=RedisResponseCache(redis, ttl_seconds=settings.llm_cache_ttl_seconds),
+        budget_ledger=RedisBudgetLedger(
+            redis,
+            max_tokens=settings.llm_budget_max_tokens,
+            max_cost_usd=settings.llm_budget_max_cost_usd,
+            window_seconds=settings.llm_budget_window_seconds,
+        ),
     )
 
 
