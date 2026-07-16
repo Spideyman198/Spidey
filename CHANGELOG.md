@@ -51,3 +51,14 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   chunks through both the symbol store and the vector payload. Adds a golden-set retrieval quality
   gate (precision@k / recall@k / MRR with blessed baselines) run against live Qdrant in CI. Backed by
   new embedder, vector-index, search, framing, injection, and retrieval-eval suites.
+- M5 knowledge graph & graph-augmented retrieval: per-language extraction of call, inheritance, and
+  import references (all six languages) into a Postgres knowledge graph (`graph_nodes`/`graph_edges`,
+  ADR-0003) built by name-based, workspace-scoped resolution inside the index transaction (no
+  symbol/edge drift); recursive-CTE traversals — callers, callees, impact set, neighborhood — each
+  bounded by a depth cap, a visited-node accumulator that terminates cycles, and a row limit; an
+  owner-scoped graph API (`/workspaces/{id}/graph/{callers,callees,impact,neighborhood}`) returning
+  directional relationship facts with `path:line` provenance; and feature-flagged graph-augmented
+  search that expands top hits into knowledge-graph facts alongside the ranked chunks. The retrieval
+  eval, re-run with the graph built, shows expansion holds ranked-hit quality at the M4 baselines
+  (the milestone's eval-driven exit criterion). Backed by new graph-builder, graph-store traversal,
+  graph-flow, and graph-API suites.
