@@ -26,6 +26,7 @@ from spidey.identity.infrastructure import (
 )
 from spidey.llm.infrastructure import FastembedDenseEmbedder, FastembedSparseEmbedder
 from spidey.platform.db import create_session_factory
+from spidey.platform.events import StreamBus
 from spidey.platform.security import SecretCipher
 from spidey.platform.tasks import CeleryTaskQueue
 from spidey.workspaces.infrastructure import GitPythonProvider, LocalWorkspaceStorage
@@ -104,6 +105,7 @@ class Container:
     sparse_embedder: SparseEmbedder
     qdrant_client: AsyncQdrantClient
     vector_index: VectorIndex
+    stream_bus: StreamBus
 
 
 def build_container(settings: Settings) -> Container:
@@ -151,6 +153,7 @@ def build_container(settings: Settings) -> Container:
             collection_prefix=settings.qdrant_collection_prefix,
             dense_dim=settings.embedding_dim,
         ),
+        stream_bus=StreamBus(redis),
     )
 
 

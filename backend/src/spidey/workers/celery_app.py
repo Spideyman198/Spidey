@@ -22,9 +22,13 @@ TASK_MODULES = (
     "spidey.workers.tasks.maintenance",
     "spidey.workers.tasks.ingestion",
     "spidey.workers.tasks.indexing",
+    "spidey.workers.tasks.events",
 )
 
 HEARTBEAT_INTERVAL_SECONDS = 60.0
+# Event relay + consumer pump. Sub-second would hammer the broker; 1s keeps the
+# run timeline near-live while the SSE endpoint streams token frames directly.
+EVENT_PUMP_INTERVAL_SECONDS = 1.0
 
 
 def create_celery_app(settings: Settings | None = None) -> Celery:
@@ -54,6 +58,10 @@ def create_celery_app(settings: Settings | None = None) -> Celery:
             "platform-heartbeat": {
                 "task": "spidey.maintenance.heartbeat",
                 "schedule": HEARTBEAT_INTERVAL_SECONDS,
+            },
+            "event-pump": {
+                "task": "spidey.events.pump",
+                "schedule": EVENT_PUMP_INTERVAL_SECONDS,
             },
         },
     )
