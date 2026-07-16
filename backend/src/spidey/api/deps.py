@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from spidey.codeintel.application import SearchService
-from spidey.codeintel.infrastructure import PostgresSymbolStore
+from spidey.codeintel.application import GraphExpander, SearchService
+from spidey.codeintel.infrastructure import PostgresGraphStore, PostgresSymbolStore
 from spidey.identity.application import AuthService, UserService
 from spidey.identity.domain.models import Role, User
 from spidey.identity.infrastructure import (
@@ -102,12 +102,26 @@ def get_symbol_store(session: SessionDep) -> PostgresSymbolStore:
     return PostgresSymbolStore(session)
 
 
+def get_graph_store(session: SessionDep) -> PostgresGraphStore:
+    return PostgresGraphStore(session)
+
+
 def get_search_service(container: ContainerDep, session: SessionDep) -> SearchService:
+    settings = container.settings
+    expander: GraphExpander | None = None
+    if settings.graph_expansion_enabled:
+        expander = GraphExpander(
+            graph=PostgresGraphStore(session),
+            hops=settings.graph_expansion_hops,
+            seeds=settings.graph_expansion_seeds,
+            max_facts=settings.graph_expansion_max_facts,
+        )
     return SearchService(
         store=PostgresSymbolStore(session),
         dense_embedder=container.dense_embedder,
         sparse_embedder=container.sparse_embedder,
         vector_index=container.vector_index,
+        graph_expander=expander,
     )
 
 
@@ -117,6 +131,7 @@ ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
 SymbolStoreDep = Annotated[PostgresSymbolStore, Depends(get_symbol_store)]
 SearchServiceDep = Annotated[SearchService, Depends(get_search_service)]
+GraphStoreDep = Annotated[PostgresGraphStore, Depends(get_graph_store)]
 
 
 async def get_current_user(

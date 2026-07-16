@@ -12,7 +12,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from spidey.codeintel.domain.models import IndexStatus, Language, SymbolKind
+from spidey.codeintel.domain.models import EdgeKind, IndexStatus, Language, SymbolKind
 from spidey.identity.domain.models import Role
 from spidey.memory.domain.models import MessageAuthor
 from spidey.workspaces.domain.models import RepositorySource, WorkspaceStatus
@@ -176,3 +176,33 @@ class SearchHitResponse(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     hits: list[SearchHitResponse]
+    # Knowledge-graph relationship facts for the top hits (M5 graph expansion).
+    graph_facts: list[str] = []
+
+
+class GraphNodeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    path: str
+    qualified_name: str
+    name: str
+    kind: SymbolKind
+    start_line: int
+
+
+class GraphNeighborResponse(BaseModel):
+    """One node reached from the queried symbol, with how it was reached."""
+
+    node: GraphNodeResponse
+    edge_kind: EdgeKind
+    distance: int
+    via_qualified_name: str
+    via_path: str
+    line: int | None
+    fact: str
+
+
+class GraphQueryResponse(BaseModel):
+    symbol: str
+    relation: str
+    neighbors: list[GraphNeighborResponse]

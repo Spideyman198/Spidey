@@ -14,7 +14,7 @@ from celery import shared_task
 
 from spidey.codeintel.application import EmbeddingPipeline, IndexService
 from spidey.codeintel.domain.models import ManifestEntry
-from spidey.codeintel.infrastructure import PostgresSymbolStore
+from spidey.codeintel.infrastructure import PostgresGraphStore, PostgresSymbolStore
 from spidey.platform.logging import get_logger
 from spidey.workers.adapters import WorkspaceSourceReader
 from spidey.workers.container import get_worker_container
@@ -54,6 +54,7 @@ async def _index(workspace_id: uuid.UUID) -> None:
                 sparse=container.sparse_embedder,
                 vectors=container.vector_index,
             ),
+            graph=PostgresGraphStore(session),
         )
         outcome = await service.reindex(workspace_id=workspace_id, manifest=manifest, reader=reader)
         await session.commit()

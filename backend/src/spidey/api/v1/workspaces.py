@@ -17,6 +17,7 @@ from fastapi import APIRouter, Query, Request, status
 
 from spidey.api.deps import (
     CurrentUser,
+    GraphStoreDep,
     RequireDeveloper,
     SearchServiceDep,
     SessionDep,
@@ -27,13 +28,15 @@ from spidey.api.v1._request_meta import request_id
 from spidey.api.v1.schemas import (
     CreateWorkspaceRequest,
     FileManifestEntryResponse,
+    GraphNeighborResponse,
+    GraphQueryResponse,
     IndexStateResponse,
     SearchHitResponse,
     SearchResponse,
     SymbolResponse,
     WorkspaceResponse,
 )
-from spidey.codeintel.domain.models import IndexStatus
+from spidey.codeintel.domain.models import GraphNeighbor, IndexStatus
 from spidey.platform.errors import NotFoundError
 from spidey.workspaces.domain.models import IngestionRequest, WorkspaceStatus
 
@@ -175,8 +178,159 @@ async def search_code(
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> SearchResponse:
     await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
-    hits = await search.search(workspace_id=workspace_id, query=q, limit=limit)
-    return SearchResponse(query=q, hits=[SearchHitResponse.model_validate(hit) for hit in hits])
+    result = await search.search(workspace_id=workspace_id, query=q, limit=limit)
+    return SearchResponse(
+        query=q,
+        hits=[SearchHitResponse.model_validate(hit) for hit in result.hits],
+        graph_facts=result.graph_facts,
+    )
+
+
+def _neighbor_response(neighbor: GraphNeighbor) -> GraphNeighborResponse:
+    return GraphNeighborResponse(
+        node=neighbor.node,  # type: ignore[arg-type]
+        edge_kind=neighbor.edge_kind,
+        distance=neighbor.distance,
+        via_qualified_name=neighbor.via_qualified_name,
+        via_path=neighbor.via_path,
+        line=neighbor.line,
+        fact=neighbor.as_fact(),
+    )
+
+
+async def _resolve_seed(
+    graph: GraphStoreDep, workspace_id: uuid.UUID, symbol: str
+) -> tuple[str, str]:
+    """Resolve a symbol name/qualified-name to a concrete graph node, or 404."""
+    nodes = await graph.find_nodes_by_name(workspace_id=workspace_id, name=symbol)
+    if not nodes:
+        raise NotFoundError("no graph node matches that symbol")
+    return nodes[0].path, nodes[0].qualified_name
+
+
+def _clamp_depth(request: Request, depth: int | None) -> int:
+    settings = request.app.state.container.settings
+    if depth is None:
+        return settings.graph_query_default_depth
+    return max(1, min(depth, settings.graph_query_max_depth))
+
+
+def _row_limit(request: Request) -> int:
+    return int(request.app.state.container.settings.graph_query_max_results)
+
+
+@router.get(
+    "/{workspace_id}/graph/callers",
+    response_model=GraphQueryResponse,
+    summary="Transitive callers of a symbol (what calls X)",
+)
+async def graph_callers(
+    workspace_id: uuid.UUID,
+    user: CurrentUser,
+    workspaces: WorkspaceServiceDep,
+    graph: GraphStoreDep,
+    request: Request,
+    symbol: Annotated[str, Query(min_length=1, max_length=1024)],
+    depth: Annotated[int | None, Query(ge=1, le=20)] = None,
+) -> GraphQueryResponse:
+    await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
+    path, qn = await _resolve_seed(graph, workspace_id, symbol)
+    neighbors = await graph.callers(
+        workspace_id=workspace_id,
+        path=path,
+        qualified_name=qn,
+        depth=_clamp_depth(request, depth),
+        limit=_row_limit(request),
+    )
+    return GraphQueryResponse(
+        symbol=symbol, relation="callers", neighbors=[_neighbor_response(n) for n in neighbors]
+    )
+
+
+@router.get(
+    "/{workspace_id}/graph/callees",
+    response_model=GraphQueryResponse,
+    summary="Transitive callees of a symbol (what X calls)",
+)
+async def graph_callees(
+    workspace_id: uuid.UUID,
+    user: CurrentUser,
+    workspaces: WorkspaceServiceDep,
+    graph: GraphStoreDep,
+    request: Request,
+    symbol: Annotated[str, Query(min_length=1, max_length=1024)],
+    depth: Annotated[int | None, Query(ge=1, le=20)] = None,
+) -> GraphQueryResponse:
+    await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
+    path, qn = await _resolve_seed(graph, workspace_id, symbol)
+    neighbors = await graph.callees(
+        workspace_id=workspace_id,
+        path=path,
+        qualified_name=qn,
+        depth=_clamp_depth(request, depth),
+        limit=_row_limit(request),
+    )
+    return GraphQueryResponse(
+        symbol=symbol, relation="callees", neighbors=[_neighbor_response(n) for n in neighbors]
+    )
+
+
+@router.get(
+    "/{workspace_id}/graph/impact",
+    response_model=GraphQueryResponse,
+    summary="Impact set of a symbol (what changing X affects)",
+)
+async def graph_impact(
+    workspace_id: uuid.UUID,
+    user: CurrentUser,
+    workspaces: WorkspaceServiceDep,
+    graph: GraphStoreDep,
+    request: Request,
+    symbol: Annotated[str, Query(min_length=1, max_length=1024)],
+    depth: Annotated[int | None, Query(ge=1, le=20)] = None,
+) -> GraphQueryResponse:
+    await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
+    path, qn = await _resolve_seed(graph, workspace_id, symbol)
+    neighbors = await graph.impact_set(
+        workspace_id=workspace_id,
+        path=path,
+        qualified_name=qn,
+        depth=_clamp_depth(request, depth),
+        limit=_row_limit(request),
+    )
+    return GraphQueryResponse(
+        symbol=symbol, relation="impact", neighbors=[_neighbor_response(n) for n in neighbors]
+    )
+
+
+@router.get(
+    "/{workspace_id}/graph/neighborhood",
+    response_model=GraphQueryResponse,
+    summary="Graph neighborhood of a symbol (any edge, either direction)",
+)
+async def graph_neighborhood(
+    workspace_id: uuid.UUID,
+    user: CurrentUser,
+    workspaces: WorkspaceServiceDep,
+    graph: GraphStoreDep,
+    request: Request,
+    symbol: Annotated[str, Query(min_length=1, max_length=1024)],
+    depth: Annotated[int | None, Query(ge=1, le=20)] = None,
+) -> GraphQueryResponse:
+    await workspaces.get(owner_id=user.id, workspace_id=workspace_id)  # ownership check
+    path, qn = await _resolve_seed(graph, workspace_id, symbol)
+    neighbors = await graph.neighborhood(
+        workspace_id=workspace_id,
+        path=path,
+        qualified_name=qn,
+        depth=_clamp_depth(request, depth),
+        limit=_row_limit(request),
+    )
+    return GraphQueryResponse(
+        symbol=symbol,
+        relation="neighborhood",
+        neighbors=[_neighbor_response(n) for n in neighbors],
+    )
 
 
 @router.post(

@@ -161,6 +161,17 @@
         "title": "CreateWorkspaceRequest",
         "type": "object"
       },
+      "EdgeKind": {
+        "description": "Knowledge-graph edge types (FR-2.5): a module ``defines`` a symbol and\n``imports`` a target; a symbol ``calls`` another and a type ``inherits`` a\nbase. Directed source\u2192target.",
+        "enum": [
+          "defines",
+          "imports",
+          "calls",
+          "inherits"
+        ],
+        "title": "EdgeKind",
+        "type": "string"
+      },
       "FileManifestEntryResponse": {
         "properties": {
           "indexable": {
@@ -192,6 +203,113 @@
           "indexable"
         ],
         "title": "FileManifestEntryResponse",
+        "type": "object"
+      },
+      "GraphNeighborResponse": {
+        "description": "One node reached from the queried symbol, with how it was reached.",
+        "properties": {
+          "distance": {
+            "title": "Distance",
+            "type": "integer"
+          },
+          "edge_kind": {
+            "$ref": "#/components/schemas/EdgeKind"
+          },
+          "fact": {
+            "title": "Fact",
+            "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "node": {
+            "$ref": "#/components/schemas/GraphNodeResponse"
+          },
+          "via_path": {
+            "title": "Via Path",
+            "type": "string"
+          },
+          "via_qualified_name": {
+            "title": "Via Qualified Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "edge_kind",
+          "distance",
+          "via_qualified_name",
+          "via_path",
+          "line",
+          "fact"
+        ],
+        "title": "GraphNeighborResponse",
+        "type": "object"
+      },
+      "GraphNodeResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SymbolKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "qualified_name": {
+            "title": "Qualified Name",
+            "type": "string"
+          },
+          "start_line": {
+            "title": "Start Line",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "qualified_name",
+          "name",
+          "kind",
+          "start_line"
+        ],
+        "title": "GraphNodeResponse",
+        "type": "object"
+      },
+      "GraphQueryResponse": {
+        "properties": {
+          "neighbors": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNeighborResponse"
+            },
+            "title": "Neighbors",
+            "type": "array"
+          },
+          "relation": {
+            "title": "Relation",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "relation",
+          "neighbors"
+        ],
+        "title": "GraphQueryResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -474,6 +592,14 @@
       },
       "SearchResponse": {
         "properties": {
+          "graph_facts": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Graph Facts",
+            "type": "array"
+          },
           "hits": {
             "items": {
               "$ref": "#/components/schemas/SearchHitResponse"
@@ -531,7 +657,7 @@
         "type": "object"
       },
       "SymbolKind": {
-        "description": "Language-neutral symbol categories. Each language maps its native node\ntypes onto this set (docs/06); `import` captures every dependency form.",
+        "description": "Language-neutral symbol categories. Each language maps its native node\ntypes onto this set (docs/06); `import` captures every dependency form.\n`module` is never a parsed symbol \u2014 it labels the per-file node the M5\ngraph hangs ``defines``/``imports`` edges on.",
         "enum": [
           "class",
           "function",
@@ -540,7 +666,8 @@
           "struct",
           "enum",
           "trait",
-          "import"
+          "import",
+          "module"
         ],
         "title": "SymbolKind",
         "type": "string"
@@ -1742,6 +1869,314 @@
           }
         ],
         "summary": "List the ingested file manifest",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/graph/callees": {
+      "get": {
+        "operationId": "graph_callees_api_v1_workspaces__workspace_id__graph_callees_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 20,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Depth"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphQueryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Transitive callees of a symbol (what X calls)",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/graph/callers": {
+      "get": {
+        "operationId": "graph_callers_api_v1_workspaces__workspace_id__graph_callers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 20,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Depth"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphQueryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Transitive callers of a symbol (what calls X)",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/graph/impact": {
+      "get": {
+        "operationId": "graph_impact_api_v1_workspaces__workspace_id__graph_impact_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 20,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Depth"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphQueryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Impact set of a symbol (what changing X affects)",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/graph/neighborhood": {
+      "get": {
+        "operationId": "graph_neighborhood_api_v1_workspaces__workspace_id__graph_neighborhood_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 20,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Depth"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphQueryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Graph neighborhood of a symbol (any edge, either direction)",
         "tags": [
           "workspaces"
         ]
