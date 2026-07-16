@@ -9,7 +9,7 @@ extraction, `graph_nodes`/`graph_edges` with recursive-CTE traversals, graph API
 | Control (requirement) | Implementation | Verification |
 | --- | --- | --- |
 | Bounded traversal (DoS / ADR-0003) | Every recursive CTE has three rails: a `depth` cap, a visited-node accumulator so cycles (mutual recursion, inheritance diamonds) terminate, and a final `LIMIT`; the API clamps `depth`/rows to `graph_query_max_*` regardless of caller input | `test_graph_flows.py` traversals return finite results on a cyclic call graph; API depth clamped in `_clamp_depth` |
-| SQL-injection safety | Traversal SQL interpolates only trusted internal constants (walk direction, enum-sourced edge kinds); all caller values (`workspace_id`, `path`, `qualified_name`, `depth`, `limit`) are bound parameters, never string-formatted | scoped `# ruff S608` ignore with justification; parameters passed via SQLAlchemy `text()` bindings |
+| SQL-injection safety | Each of the four traversals is a **fully static SQL constant** — no f-string, `.format`, or concatenation anywhere — with every caller value (`workspace_id`, `path`, `qualified_name`, `depth`, `limit`) passed as a bound parameter; edge-kind filters are literal in the query text, so no value is ever assembled into SQL | bandit B608 clean (no suppressions); parameters via SQLAlchemy `text()` bindings |
 | Per-workspace tenant isolation | Every node/edge row carries `workspace_id`; the seed CTE and all edge joins filter on it, so a traversal cannot cross a tenant boundary; graph API endpoints verify workspace ownership first | `test_graph_flows` isolation; ownership check on all four endpoints (404 for non-owner via the shared workspace guard) |
 | No graph/symbol drift | The graph is rebuilt from the workspace's current symbols + references inside the *same* index transaction (delete-then-insert), so a crash leaves the prior committed graph, never a half-built one | graph rebuild in `IndexService.reindex`; committed with symbols in one session |
 | FK integrity on rebuild | Nodes are flushed before edges reference them; edges FK both endpoints with `ON DELETE CASCADE`, so a workspace deletion removes its whole graph | `rebuild` node-before-edge flush; FK cascade in migration `b2c3d4e5f6a7` |
@@ -24,6 +24,10 @@ extraction, `graph_nodes`/`graph_edges` with recursive-CTE traversals, graph API
 - **Graph in Postgres, bounded by the port.** Per ADR-0003 the graph is Postgres tables + CTEs, not a
   graph DB. The `GraphStore` port's mandatory `depth`/`limit` parameters make the "no unbounded graph
   queries" constraint a compile-time fact, not a convention — there is no method that walks freely.
+- **Static queries over DRY.** The four traversals are written out in full rather than assembled from
+  a shared template. The duplication is deliberate: it makes injection-impossibility self-evident to a
+  reviewer and to every SAST scanner (nothing is built from a value), which a parameterized
+  string-builder — however carefully guarded — cannot demonstrate as cleanly.
 - **Name-based resolution is an over-approximation in the safe direction.** Ambiguous names link to
   all candidates (capped), so an impact set may include a false positive but never *misses* a real
   dependent — the correct bias for "what could this change break." Documented as name-based, not
