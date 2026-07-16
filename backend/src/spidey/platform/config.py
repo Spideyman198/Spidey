@@ -88,6 +88,20 @@ class Settings(BaseSettings):
     # Prefix for per-workspace Qdrant collections.
     qdrant_collection_prefix: str = Field(default="code")
 
+    # ── Knowledge graph & graph-augmented retrieval (codeintel, M5) ────────────
+    # Hard caps on graph traversals (ADR-0003) — a query can never exceed these.
+    graph_query_max_depth: int = Field(default=6, ge=1, le=20)
+    graph_query_max_results: int = Field(default=200, ge=1, le=2000)
+    graph_query_default_depth: int = Field(default=3, ge=1, le=20)
+    # Graph-augmented retrieval (docs/06): top hits are expanded through the
+    # graph and the relationships emitted as structured facts. Feature-flagged —
+    # the exit criterion is the retrieval eval showing expansion ≥ neutral.
+    graph_expansion_enabled: bool = Field(default=True)
+    graph_expansion_hops: int = Field(default=1, ge=1, le=3)
+    # Max seed hits expanded and max facts emitted, to bound the added context.
+    graph_expansion_seeds: int = Field(default=5, ge=1, le=50)
+    graph_expansion_max_facts: int = Field(default=15, ge=1, le=100)
+
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
     otel_service_name: str = Field(default="spidey", min_length=1)
 

@@ -8,14 +8,17 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from spidey.codeintel.domain.models import (
+    EdgeKind,
     IndexState,
     IndexStatus,
     Language,
+    Reference,
     Symbol,
     SymbolKind,
 )
 from spidey.codeintel.infrastructure.orm import (
     CodeChunkRecord,
+    CodeReferenceRecord,
     IndexedFileRecord,
     IndexSnapshotRecord,
     SymbolRecord,
@@ -51,6 +54,7 @@ class PostgresSymbolStore:
         language: Language,
         symbols: list[Symbol],
         chunks: list[CodeChunk],
+        references: list[Reference],
     ) -> None:
         await self._delete_file_rows(workspace_id, [path])
         self._session.add_all(
@@ -85,6 +89,17 @@ class PostgresSymbolStore:
             )
             for c in chunks
         )
+        self._session.add_all(
+            CodeReferenceRecord(
+                workspace_id=workspace_id,
+                path=path,
+                kind=r.kind.value,
+                from_qualified_name=r.from_qualified_name,
+                target_name=r.target_name,
+                line=r.line,
+            )
+            for r in references
+        )
         # Upsert the indexed-file hash so a re-run detects no change.
         await self._session.execute(
             pg_insert(IndexedFileRecord)
@@ -102,7 +117,7 @@ class PostgresSymbolStore:
             await self._session.flush()
 
     async def _delete_file_rows(self, workspace_id: uuid.UUID, paths: list[str]) -> None:
-        for model in (SymbolRecord, CodeChunkRecord, IndexedFileRecord):
+        for model in (SymbolRecord, CodeChunkRecord, CodeReferenceRecord, IndexedFileRecord):
             await self._session.execute(
                 delete(model).where(model.workspace_id == workspace_id, model.path.in_(paths))
             )
@@ -186,6 +201,31 @@ class PostgresSymbolStore:
             )
         )
         return [self._to_symbol(r) for r in records]
+
+    async def symbols_with_paths(self, workspace_id: uuid.UUID) -> list[tuple[str, Symbol]]:
+        records = await self._session.scalars(
+            select(SymbolRecord)
+            .where(SymbolRecord.workspace_id == workspace_id)
+            .order_by(SymbolRecord.path, SymbolRecord.start_line)
+        )
+        return [(r.path, self._to_symbol(r)) for r in records]
+
+    async def references(self, workspace_id: uuid.UUID) -> list[tuple[str, Reference]]:
+        records = await self._session.scalars(
+            select(CodeReferenceRecord).where(CodeReferenceRecord.workspace_id == workspace_id)
+        )
+        return [
+            (
+                r.path,
+                Reference(
+                    kind=EdgeKind(r.kind),
+                    from_qualified_name=r.from_qualified_name,
+                    target_name=r.target_name,
+                    line=r.line,
+                ),
+            )
+            for r in records
+        ]
 
     @staticmethod
     def _to_symbol(r: SymbolRecord) -> Symbol:

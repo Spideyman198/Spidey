@@ -24,7 +24,15 @@ from tree_sitter import Parser as TSParser
 
 from spidey.codeintel.domain.errors import ParseError
 from spidey.codeintel.domain.languages import LANGUAGE_SPECS
-from spidey.codeintel.domain.models import CodeChunk, Language, ParsedUnit, Symbol, SymbolKind
+from spidey.codeintel.domain.models import (
+    CodeChunk,
+    EdgeKind,
+    Language,
+    ParsedUnit,
+    Reference,
+    Symbol,
+    SymbolKind,
+)
 
 if TYPE_CHECKING:
     from tree_sitter import Node
@@ -34,6 +42,64 @@ if TYPE_CHECKING:
 _MAX_SOURCE_BYTES = 8 * 1024 * 1024
 _PARSE_TIMEOUT_SECONDS = 10.0
 _MAX_DEPTH = 200
+_MODULE_SCOPE = "<module>"
+
+# Identifier-like leaf node types across the enabled grammars; the text of these
+# is a name we can resolve against a symbol (M5 edge extraction).
+_NAME_LEAVES = frozenset(
+    {
+        "identifier",
+        "type_identifier",
+        "field_identifier",
+        "property_identifier",
+        "namespace_identifier",
+        "constant",
+    }
+)
+# Fields tried, in order, to reach a call's callee expression across grammars.
+_CALLEE_FIELDS = ("function", "name", "constructor", "type")
+
+# Symbol kinds that can carry an ``inherits`` edge (a base type / trait).
+_TYPE_KINDS = frozenset(
+    {
+        SymbolKind.CLASS,
+        SymbolKind.STRUCT,
+        SymbolKind.INTERFACE,
+        SymbolKind.ENUM,
+        SymbolKind.TRAIT,
+    }
+)
+
+
+def _identifier_leaves(node: Node) -> list[str]:
+    """Identifier-like leaf texts under ``node``, in source order."""
+    out: list[str] = []
+    _collect_identifiers(node, out)
+    return out
+
+
+def _collect_identifiers(node: Node, out: list[str]) -> None:
+    if node.child_count == 0:
+        if node.type in _NAME_LEAVES and node.text is not None:
+            out.append(node.text.decode("utf-8", "replace"))
+        return
+    for child in node.children:
+        _collect_identifiers(child, out)
+
+
+def _callee_name(call_node: Node) -> str | None:
+    """The rightmost identifier of a call's callee (``a.b.c()`` → ``c``)."""
+    target: Node | None = None
+    for field_name in _CALLEE_FIELDS:
+        found = call_node.child_by_field_name(field_name)
+        if found is not None:
+            target = found
+            break
+    if target is None:
+        return None
+    names = _identifier_leaves(target)
+    return names[-1] if names else None
+
 
 # Grammar capsules come bundled in each package's wheel — no runtime download,
 # so parsing works offline and under a read-only container rootfs. Adding a
@@ -95,6 +161,7 @@ class _Extractor:
         self._source_len = source_len
         self.symbols: list[Symbol] = []
         self.chunks: list[CodeChunk] = []
+        self.references: list[Reference] = []
         self._first_top_level: int | None = None
         self._first_top_level_line: int = 1
 
@@ -130,7 +197,51 @@ class _Extractor:
             elif child.type in self._spec.definitions:
                 self._emit_definition(child, scope=scope, depth=depth, top_level=top_level)
             else:
+                if child.type in self._spec.call_nodes:
+                    self._emit_call(child, scope)
                 self._walk(child, scope=scope, depth=depth + 1, top_level=top_level)
+
+    def _current_scope(self, scope: list[tuple[SymbolKind, str]]) -> str:
+        return ".".join(n for _, n in scope) or _MODULE_SCOPE
+
+    def _emit_call(self, node: Node, scope: list[tuple[SymbolKind, str]]) -> None:
+        callee = _callee_name(node)
+        if callee is None:
+            return
+        self.references.append(
+            Reference(
+                kind=EdgeKind.CALLS,
+                from_qualified_name=self._current_scope(scope),
+                target_name=callee,
+                line=node.start_point[0] + 1,
+            )
+        )
+
+    def _emit_inherits(self, node: Node, qualified: str) -> None:
+        line = node.start_point[0] + 1
+        for base in dict.fromkeys(self._base_names(node)):
+            if base == qualified.rsplit(".", 1)[-1]:
+                continue  # a type does not inherit itself
+            self.references.append(
+                Reference(
+                    kind=EdgeKind.INHERITS,
+                    from_qualified_name=qualified,
+                    target_name=base,
+                    line=line,
+                )
+            )
+
+    def _base_names(self, node: Node) -> list[str]:
+        names: list[str] = []
+        for field_name in self._spec.heritage_fields:
+            child = node.child_by_field_name(field_name)
+            if child is not None:
+                names.extend(_identifier_leaves(child))
+        if self._spec.heritage_child_types:
+            for child in node.children:
+                if child.type in self._spec.heritage_child_types:
+                    names.extend(_identifier_leaves(child))
+        return names
 
     def _emit_import(self, node: Node) -> None:
         text = node.text.decode("utf-8", "replace").strip() if node.text is not None else ""
@@ -147,6 +258,19 @@ class _Extractor:
                 reference=text[:400],
             )
         )
+        # Import edges (module → imported name). Name-based resolution keeps only
+        # the intra-repo targets; external library names simply resolve to
+        # nothing and are dropped when the graph is built.
+        line = node.start_point[0] + 1
+        for target in dict.fromkeys(_identifier_leaves(node)):
+            self.references.append(
+                Reference(
+                    kind=EdgeKind.IMPORTS,
+                    from_qualified_name=_MODULE_SCOPE,
+                    target_name=target,
+                    line=line,
+                )
+            )
 
     def _emit_definition(
         self, node: Node, *, scope: list[tuple[SymbolKind, str]], depth: int, top_level: bool
@@ -179,6 +303,8 @@ class _Extractor:
                 end_byte=node.end_byte,
             )
         )
+        if kind in _TYPE_KINDS:
+            self._emit_inherits(node, qualified)
 
         if top_level and (self._first_top_level is None or node.start_byte < self._first_top_level):
             self._first_top_level = node.start_byte
@@ -226,5 +352,9 @@ class TreeSitterParser:
         extractor = _Extractor(spec, len(source))
         extractor.run(tree.root_node)
         return ParsedUnit(
-            path=path, language=language, symbols=extractor.symbols, chunks=extractor.chunks
+            path=path,
+            language=language,
+            symbols=extractor.symbols,
+            chunks=extractor.chunks,
+            references=extractor.references,
         )

@@ -44,6 +44,13 @@ class LanguageSpec:
     treated as imports (their full text becomes the reference). ``name_field``
     is the field name holding the identifier (default ``name``); a few node
     types need a custom resolver, handled in the parser.
+
+    M5 graph edges:
+    - ``call_nodes`` are node types representing a call site; the callee name is
+      the rightmost identifier of the call's function/name field.
+    - ``heritage_fields`` / ``heritage_child_types`` locate base-type references
+      on a type definition (superclasses/extends/implements/impl-trait); the
+      base names are the identifiers found within them.
     """
 
     definitions: dict[str, SymbolKind]
@@ -51,6 +58,9 @@ class LanguageSpec:
     method_container_kinds: frozenset[SymbolKind] = field(
         default_factory=lambda: frozenset({SymbolKind.CLASS, SymbolKind.STRUCT, SymbolKind.TRAIT})
     )
+    call_nodes: frozenset[str] = frozenset()
+    heritage_fields: frozenset[str] = frozenset()
+    heritage_child_types: frozenset[str] = frozenset()
 
 
 _PYTHON = LanguageSpec(
@@ -59,6 +69,8 @@ _PYTHON = LanguageSpec(
         "function_definition": SymbolKind.FUNCTION,
     },
     import_nodes=frozenset({"import_statement", "import_from_statement"}),
+    call_nodes=frozenset({"call"}),
+    heritage_fields=frozenset({"superclasses"}),
 )
 
 _JS = LanguageSpec(
@@ -69,6 +81,8 @@ _JS = LanguageSpec(
         "method_definition": SymbolKind.METHOD,
     },
     import_nodes=frozenset({"import_statement"}),
+    call_nodes=frozenset({"call_expression", "new_expression"}),
+    heritage_child_types=frozenset({"class_heritage"}),
 )
 
 _TS = LanguageSpec(
@@ -81,6 +95,8 @@ _TS = LanguageSpec(
         "method_definition": SymbolKind.METHOD,
     },
     import_nodes=frozenset({"import_statement"}),
+    call_nodes=frozenset({"call_expression", "new_expression"}),
+    heritage_child_types=frozenset({"class_heritage"}),
 )
 
 _GO = LanguageSpec(
@@ -90,6 +106,7 @@ _GO = LanguageSpec(
         "type_spec": SymbolKind.STRUCT,  # refined to interface/struct in the parser
     },
     import_nodes=frozenset({"import_declaration"}),
+    call_nodes=frozenset({"call_expression"}),
 )
 
 _JAVA = LanguageSpec(
@@ -102,6 +119,8 @@ _JAVA = LanguageSpec(
         "constructor_declaration": SymbolKind.METHOD,
     },
     import_nodes=frozenset({"import_declaration"}),
+    call_nodes=frozenset({"method_invocation", "object_creation_expression"}),
+    heritage_fields=frozenset({"superclass", "interfaces"}),
 )
 
 _RUST = LanguageSpec(
@@ -114,6 +133,8 @@ _RUST = LanguageSpec(
         "mod_item": SymbolKind.CLASS,
     },
     import_nodes=frozenset({"use_declaration"}),
+    call_nodes=frozenset({"call_expression"}),
+    heritage_fields=frozenset({"trait"}),  # `impl Trait for Type`
 )
 
 LANGUAGE_SPECS: dict[Language, LanguageSpec] = {

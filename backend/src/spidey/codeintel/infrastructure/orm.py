@@ -99,3 +99,65 @@ class CodeChunkRecord(Base):
     end_byte: Mapped[int] = mapped_column(BigInteger)
     # Set when index-time screening finds an injection-pattern payload (SEC-PI).
     is_suspect: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class CodeReferenceRecord(Base):
+    """An unresolved reference captured at parse time (M5). Resolved into
+    ``graph_edges`` by name at graph-build time; kept per-file so an incremental
+    re-index replaces just the changed file's references."""
+
+    __tablename__ = "code_references"
+    __table_args__ = (Index("ix_code_references_ws_path", "workspace_id", "path"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    path: Mapped[str] = mapped_column(String(4096))
+    kind: Mapped[str] = mapped_column(String(16))
+    from_qualified_name: Mapped[str] = mapped_column(String(1024))
+    target_name: Mapped[str] = mapped_column(String(512))
+    line: Mapped[int] = mapped_column(Integer)
+
+
+class GraphNodeRecord(Base):
+    """A knowledge-graph node: a module or a symbol (ADR-0003). Unique within a
+    workspace by ``(path, qualified_name)``."""
+
+    __tablename__ = "graph_nodes"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "path", "qualified_name", name="uq_graph_nodes_ws_path_qn"
+        ),
+        Index("ix_graph_nodes_ws_name", "workspace_id", "name"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    path: Mapped[str] = mapped_column(String(4096))
+    qualified_name: Mapped[str] = mapped_column(String(1024))
+    name: Mapped[str] = mapped_column(String(512))
+    kind: Mapped[str] = mapped_column(String(16))
+    start_line: Mapped[int] = mapped_column(Integer)
+
+
+class GraphEdgeRecord(Base):
+    """A directed edge between two nodes of the same workspace. ``workspace_id``
+    is denormalized so traversal CTEs stay scoped with a single indexed column."""
+
+    __tablename__ = "graph_edges"
+    __table_args__ = (
+        Index("ix_graph_edges_ws_src_kind", "workspace_id", "src_id", "kind"),
+        Index("ix_graph_edges_ws_dst_kind", "workspace_id", "dst_id", "kind"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    src_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("graph_nodes.id", ondelete="CASCADE"))
+    dst_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("graph_nodes.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(16))
+    line: Mapped[int | None] = mapped_column(Integer)

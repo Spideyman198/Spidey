@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from spidey.codeintel.application.graph_builder import build_graph
 from spidey.codeintel.domain.errors import ParseError
 from spidey.codeintel.domain.languages import language_for_path
 from spidey.codeintel.domain.models import IndexOutcome, IndexStatus
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
     from spidey.codeintel.domain.models import CodeChunk, Language, ManifestEntry
     from spidey.codeintel.domain.ports import (
         DenseEmbedder,
+        GraphStore,
         Parser,
         SourceReader,
         SparseEmbedder,
@@ -67,10 +69,12 @@ class IndexService:
         store: SymbolStore,
         parser: Parser,
         embedding: EmbeddingPipeline | None = None,
+        graph: GraphStore | None = None,
     ) -> None:
         self._store = store
         self._parser = parser
         self._embedding = embedding
+        self._graph = graph
 
     async def reindex(
         self,
@@ -107,6 +111,12 @@ class IndexService:
             else:
                 skipped_count += 1
 
+        # Rebuild the graph from the workspace's current symbols + references,
+        # in the same transaction, so nodes/edges never drift from the symbols
+        # they derive from (ADR-0003). Only when something actually changed.
+        if self._graph is not None and (changed or removed):
+            await self._rebuild_graph(self._graph, workspace_id)
+
         file_count, symbol_count, chunk_count = await self._store.counts(workspace_id)
         await self._store.set_status(
             workspace_id=workspace_id,
@@ -124,6 +134,12 @@ class IndexService:
             chunk_count=chunk_count,
             updated_at=datetime.now(tz=UTC),
         )
+
+    async def _rebuild_graph(self, graph: GraphStore, workspace_id: uuid.UUID) -> None:
+        symbols = await self._store.symbols_with_paths(workspace_id)
+        references = await self._store.references(workspace_id)
+        nodes, edges = build_graph(symbols, references)
+        await graph.rebuild(workspace_id=workspace_id, nodes=nodes, edges=edges)
 
     @staticmethod
     def _desired_index(
@@ -159,6 +175,7 @@ class IndexService:
                 language=language,
                 symbols=[],
                 chunks=[],
+                references=[],
             )
             _logger.info("index_file_unparseable", workspace_id=str(workspace_id), path=path)
             return False
@@ -179,6 +196,7 @@ class IndexService:
             language=language,
             symbols=unit.symbols,
             chunks=chunks,
+            references=unit.references,
         )
         if self._embedding is not None:
             await self._embed_and_upsert(self._embedding, workspace_id, path, language, screened)

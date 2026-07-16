@@ -21,9 +21,13 @@ if TYPE_CHECKING:
 
     from spidey.codeintel.domain.models import (
         CodeChunk,
+        GraphEdge,
+        GraphNeighbor,
+        GraphNode,
         IndexState,
         IndexStatus,
         ParsedUnit,
+        Reference,
         Symbol,
     )
 
@@ -84,8 +88,9 @@ class SymbolStore(SymbolLookup, Protocol):
         language: Language,
         symbols: list[Symbol],
         chunks: list[CodeChunk],
+        references: list[Reference],
     ) -> None:
-        """Atomically replace a file's symbols, chunks, and indexed hash."""
+        """Atomically replace a file's symbols, chunks, references, and hash."""
         ...
 
     async def remove_files(self, *, workspace_id: uuid.UUID, paths: list[str]) -> None: ...
@@ -107,6 +112,16 @@ class SymbolStore(SymbolLookup, Protocol):
     async def list_symbols(
         self, *, workspace_id: uuid.UUID, path: str | None = None
     ) -> list[Symbol]: ...
+
+    async def symbols_with_paths(self, workspace_id: uuid.UUID) -> list[tuple[str, Symbol]]:
+        """Every symbol in the workspace paired with its file path — the node
+        source for a graph rebuild."""
+        ...
+
+    async def references(self, workspace_id: uuid.UUID) -> list[tuple[str, Reference]]:
+        """Every captured reference paired with its file path — the edge source
+        for a graph rebuild."""
+        ...
 
     async def get_state(self, workspace_id: uuid.UUID) -> IndexState | None:
         """The persisted index snapshot for a workspace, or None if never indexed."""
@@ -211,4 +226,65 @@ class VectorIndex(VectorSearcher, Protocol):
 
     async def drop(self, workspace_id: uuid.UUID) -> None:
         """Delete the workspace collection entirely (workspace teardown)."""
+        ...
+
+
+class GraphNeighborhood(Protocol):
+    """Read-only seed-neighborhood lookup — all graph-augmented retrieval needs.
+
+    Segregated from the full :class:`GraphStore` so SearchService depends only on
+    the traversal it uses (and its tests fake only this)."""
+
+    async def neighborhood(
+        self, *, workspace_id: uuid.UUID, path: str, qualified_name: str, depth: int, limit: int
+    ) -> list[GraphNeighbor]: ...
+
+
+class GraphStore(GraphNeighborhood, Protocol):
+    """Persistence + bounded traversal for a workspace's code knowledge graph
+    (ADR-0003: Postgres tables + recursive CTEs). Every traversal is capped by
+    ``depth`` and ``limit`` so a query can never walk an unbounded path."""
+
+    async def rebuild(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        nodes: Sequence[GraphNode],
+        edges: Sequence[GraphEdge],
+    ) -> None:
+        """Atomically replace the workspace's graph with ``nodes``/``edges``.
+
+        Called inside the index transaction so the graph never drifts from the
+        symbols it is derived from.
+        """
+        ...
+
+    async def counts(self, workspace_id: uuid.UUID) -> tuple[int, int]:
+        """Current (node_count, edge_count) for the workspace."""
+        ...
+
+    async def find_nodes_by_name(
+        self, *, workspace_id: uuid.UUID, name: str, limit: int = 20
+    ) -> list[GraphNode]:
+        """Nodes whose ``name`` or ``qualified_name`` matches — resolves a graph
+        query's seed symbol."""
+        ...
+
+    async def callers(
+        self, *, workspace_id: uuid.UUID, path: str, qualified_name: str, depth: int, limit: int
+    ) -> list[GraphNeighbor]:
+        """Transitive callers (reverse ``calls`` edges) up to ``depth``."""
+        ...
+
+    async def callees(
+        self, *, workspace_id: uuid.UUID, path: str, qualified_name: str, depth: int, limit: int
+    ) -> list[GraphNeighbor]:
+        """Transitive callees (forward ``calls`` edges) up to ``depth``."""
+        ...
+
+    async def impact_set(
+        self, *, workspace_id: uuid.UUID, path: str, qualified_name: str, depth: int, limit: int
+    ) -> list[GraphNeighbor]:
+        """What is affected by changing this node: transitive callers and
+        subtypes (reverse ``calls`` and ``inherits``)."""
         ...
