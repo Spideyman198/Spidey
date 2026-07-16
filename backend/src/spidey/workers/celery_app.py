@@ -23,6 +23,8 @@ TASK_MODULES = (
     "spidey.workers.tasks.ingestion",
     "spidey.workers.tasks.indexing",
     "spidey.workers.tasks.events",
+    "spidey.workers.tasks.chat",
+    "spidey.workers.tasks.agent_run",
 )
 
 HEARTBEAT_INTERVAL_SECONDS = 60.0

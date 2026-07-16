@@ -250,6 +250,8 @@ async def app_client() -> AsyncIterator[httpx.AsyncClient]:
     for module in (
         "spidey.platform.audit",
         "spidey.platform.events.orm",
+        "spidey.llm.infrastructure.orm",
+        "spidey.agents.infrastructure.orm",
         "spidey.identity.infrastructure.orm",
         "spidey.memory.infrastructure.orm",
     ):

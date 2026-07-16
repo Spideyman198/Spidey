@@ -1,0 +1,122 @@
+"""Agent-run task (M7): drive one run's LangGraph to its next pause or end.
+
+Contract: this is the *only* place the run graph executes. It builds the graph
+with a durable Postgres checkpointer keyed by ``thread_id = run_id``, then either
+starts a fresh run (``PENDING``) or resumes a paused one (a human approved a plan
+or an approval). The graph runs until it hits an interrupt (persisted by the
+checkpointer) or reaches a terminal state; our own writes — plan, status changes,
+outbox events — commit on the SQLAlchemy session at the end. A crash mid-run is
+recorded as ``FAILED`` in a fresh session so the run never sticks in ``RUNNING``.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import uuid
+
+from celery import shared_task
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.types import Command
+
+from spidey.agents.application import ToolRegistry
+from spidey.agents.domain.runs import RunStatus, is_terminal
+from spidey.agents.graph import GraphNodes, build_run_graph, initial_state
+from spidey.agents.infrastructure import CodeSearchProvider
+from spidey.agents.infrastructure.run_store import PostgresRunStore
+from spidey.llm.application import Gateway
+from spidey.llm.infrastructure import PostgresInteractionCapture
+from spidey.platform.events import EventEnvelope, OutboxWriter, RunStatusChanged
+from spidey.platform.logging import get_logger
+from spidey.workers.container import get_worker_container
+
+_logger = get_logger("spidey.workers.agent_run")
+
+
+@shared_task(name="spidey.agents.run", max_retries=0, acks_late=True)
+def run_agent(run_id: str) -> None:
+    asyncio.run(_run(uuid.UUID(run_id)))
+
+
+async def _run(run_id: uuid.UUID) -> None:
+    container = get_worker_container()
+    try:
+        async with container.session_factory() as session:
+            store = PostgresRunStore(session)
+            run = await store.load(run_id)
+            if run is None or is_terminal(run.status):
+                _logger.info("agent_run_skip", run_id=str(run_id))
+                return
+            events = OutboxWriter(session)
+            gateway = Gateway(
+                registry=container.llm_registry,
+                events=events,
+                capture=PostgresInteractionCapture(session),
+                cache=container.response_cache,
+                budget=container.budget_ledger,
+                max_retries=container.settings.llm_max_retries,
+            )
+            registry = ToolRegistry(
+                providers=[
+                    CodeSearchProvider(
+                        session_factory=container.session_factory,
+                        dense_embedder=container.dense_embedder,
+                        sparse_embedder=container.sparse_embedder,
+                        vector_index=container.vector_index,
+                    )
+                ],
+                events=events,
+            )
+            nodes = GraphNodes(
+                gateway=gateway, registry=registry, store=store, events=events
+            )
+            config = {"configurable": {"thread_id": str(run_id)}}
+            async with AsyncPostgresSaver.from_conn_string(
+                container.settings.checkpointer_dsn
+            ) as saver:
+                await saver.setup()  # idempotent: creates the checkpoint tables once
+                graph = build_run_graph(nodes, checkpointer=saver)
+                if run.status is RunStatus.PENDING:
+                    await graph.ainvoke(
+                        initial_state(
+                            run_id=str(run_id),
+                            owner_id=str(run.owner_id),
+                            workspace_id=(
+                                str(run.workspace_id) if run.workspace_id else None
+                            ),
+                            goal=run.goal,
+                        ),
+                        config,
+                    )
+                else:
+                    # Resumed after a human approved the plan (or an approval).
+                    await graph.ainvoke(Command(resume="approved"), config)
+            await session.commit()
+    except Exception as exc:
+        # Record the failure so the run never sticks in RUNNING, then re-raise so
+        # Celery logs it with a traceback.
+        await _mark_failed(run_id, str(exc))
+        raise
+    _logger.info("agent_run_done", run_id=str(run_id))
+
+
+async def _mark_failed(run_id: uuid.UUID, error: str) -> None:
+    """Record a crashed run as FAILED in a fresh session (the run's own session is
+    poisoned by the exception), so it never sticks in RUNNING."""
+    container = get_worker_container()
+    async with container.session_factory() as session:
+        store = PostgresRunStore(session)
+        run = await store.load(run_id)
+        if run is None or is_terminal(run.status):
+            return
+        await store.set_status(
+            run_id=run_id, status=RunStatus.FAILED, error=error[:2000]
+        )
+        OutboxWriter(session).add(
+            EventEnvelope.of(
+                RunStatusChanged(status=RunStatus.FAILED.value),
+                run_id=run_id,
+                actor=str(run.owner_id),
+            )
+        )
+        await session.commit()
+        _logger.warning("agent_run_failed", run_id=str(run_id), error=error[:200])

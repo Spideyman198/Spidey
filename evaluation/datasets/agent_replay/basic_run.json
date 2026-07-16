@@ -1,0 +1,22 @@
+{
+  "name": "basic_run",
+  "goal": "understand the run domain",
+  "planner_lines": ["read the models", "summarize findings"],
+  "coder_notes": ["examined models.py", "wrote the summary"],
+  "expected": {
+    "status": "completed",
+    "plan": ["read the models", "summarize findings"],
+    "transcript": [
+      "[read the models] examined models.py",
+      "[summarize findings] wrote the summary"
+    ],
+    "events": [
+      "agents.run_status_changed",
+      "agents.plan_created",
+      "agents.run_status_changed",
+      "agents.run_status_changed",
+      "agents.run_status_changed",
+      "chat.run_completed"
+    ]
+  }
+}

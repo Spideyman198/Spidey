@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Annotated
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from spidey.agents.application import RunService
+from spidey.agents.infrastructure.run_store import PostgresRunStore
 from spidey.codeintel.application import GraphExpander, SearchService
 from spidey.codeintel.infrastructure import PostgresGraphStore, PostgresSymbolStore
 from spidey.identity.application import AuthService, UserService
@@ -26,6 +28,7 @@ from spidey.memory.application import ConversationService
 from spidey.memory.infrastructure import PostgresConversationStore
 from spidey.platform.audit import AuditAction, AuditLogger, IndependentAuditLogger
 from spidey.platform.errors import ForbiddenError, UnauthorizedError
+from spidey.platform.events import OutboxWriter
 from spidey.workspaces.application import WorkspaceService
 from spidey.workspaces.infrastructure import PostgresWorkspaceStore
 
@@ -125,6 +128,14 @@ def get_search_service(container: ContainerDep, session: SessionDep) -> SearchSe
     )
 
 
+def get_run_service(container: ContainerDep, session: SessionDep) -> RunService:
+    return RunService(
+        store=PostgresRunStore(session),
+        events=OutboxWriter(session),
+        task_queue=container.task_queue,
+    )
+
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation_service)]
@@ -132,6 +143,7 @@ WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)
 SymbolStoreDep = Annotated[PostgresSymbolStore, Depends(get_symbol_store)]
 SearchServiceDep = Annotated[SearchService, Depends(get_search_service)]
 GraphStoreDep = Annotated[PostgresGraphStore, Depends(get_graph_store)]
+RunServiceDep = Annotated[RunService, Depends(get_run_service)]
 
 
 async def get_current_user(
