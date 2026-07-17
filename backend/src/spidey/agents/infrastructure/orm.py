@@ -38,6 +38,8 @@ class RunRecord(Base):
     status: Mapped[str] = mapped_column(String(24), index=True)
     error: Mapped[str | None] = mapped_column(Text)
     budget: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # Git base of the run's isolated branch (M8): anchors the run's diff.
+    base_commit: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow

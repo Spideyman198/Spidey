@@ -69,6 +69,9 @@ class Run(BaseModel):
     goal: str
     status: RunStatus
     error: str | None = None
+    # Git base of the run's isolated branch (M8); None until the branch node
+    # runs, or forever for a workspace-less run.
+    base_commit: str | None = None
     created_at: datetime
     updated_at: datetime
 

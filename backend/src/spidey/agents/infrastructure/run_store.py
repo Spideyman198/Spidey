@@ -73,6 +73,12 @@ class PostgresRunStore:
             record.updated_at = datetime.now(tz=UTC)
             await self._session.flush()
 
+    async def set_base_commit(self, *, run_id: uuid.UUID, base_commit: str | None) -> None:
+        record = await self._session.get(RunRecord, run_id)
+        if record is not None:
+            record.base_commit = base_commit
+            await self._session.flush()
+
     async def get_budget(self, run_id: uuid.UUID) -> RunBudget | None:
         record = await self._session.get(RunRecord, run_id)
         return RunBudget.model_validate(record.budget) if record is not None else None
@@ -151,6 +157,7 @@ def _to_run(record: RunRecord) -> Run:
         goal=record.goal,
         status=RunStatus(record.status),
         error=record.error,
+        base_commit=record.base_commit,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )

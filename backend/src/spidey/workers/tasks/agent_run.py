@@ -1,4 +1,4 @@
-"""Agent-run task (M7): drive one run's LangGraph to its next pause or end.
+"""Agent-run task (M7/M8): drive one run's LangGraph to its next pause or end.
 
 Contract: this is the *only* place the run graph executes. It builds the graph
 with a durable Postgres checkpointer keyed by ``thread_id = run_id``, then either
@@ -21,13 +21,14 @@ from langgraph.types import Command
 from spidey.agents.application import ToolRegistry
 from spidey.agents.domain.runs import RunStatus, is_terminal
 from spidey.agents.graph import GraphNodes, build_run_graph, initial_state
-from spidey.agents.infrastructure import CodeSearchProvider
+from spidey.agents.infrastructure import CodeEditProvider, CodeSearchProvider
 from spidey.agents.infrastructure.run_store import PostgresRunStore
 from spidey.llm.application import Gateway
 from spidey.llm.infrastructure import PostgresInteractionCapture
 from spidey.platform.events import EventEnvelope, OutboxWriter, RunStatusChanged
 from spidey.platform.logging import get_logger
 from spidey.workers.container import get_worker_container
+from spidey.workspaces.application import GitWorkflowService
 
 _logger = get_logger("spidey.workers.agent_run")
 
@@ -62,11 +63,20 @@ async def _run(run_id: uuid.UUID) -> None:
                         dense_embedder=container.dense_embedder,
                         sparse_embedder=container.sparse_embedder,
                         vector_index=container.vector_index,
-                    )
+                    ),
+                    CodeEditProvider(storage=container.workspace_storage),
                 ],
                 events=events,
             )
-            nodes = GraphNodes(gateway=gateway, registry=registry, store=store, events=events)
+            nodes = GraphNodes(
+                gateway=gateway,
+                registry=registry,
+                store=store,
+                events=events,
+                git=GitWorkflowService(
+                    git=container.git_provider, storage=container.workspace_storage
+                ),
+            )
             config = {"configurable": {"thread_id": str(run_id)}}
             async with AsyncPostgresSaver.from_conn_string(
                 container.settings.checkpointer_dsn

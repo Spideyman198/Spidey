@@ -44,6 +44,9 @@ class FakeStore:
     ) -> None:
         self.runs[run_id] = self.runs[run_id].model_copy(update={"status": status, "error": error})
 
+    async def set_base_commit(self, *, run_id: uuid.UUID, base_commit: str | None) -> None:
+        self.runs[run_id] = self.runs[run_id].model_copy(update={"base_commit": base_commit})
+
     async def get_budget(self, run_id: uuid.UUID) -> RunBudget | None:
         return self.budgets.get(run_id)
 

@@ -21,6 +21,18 @@ class RunState(TypedDict):
     # Human-readable notes accumulated per step (for the transcript / finalize).
     transcript: list[str]
     status: str
+    # ── coder/reviewer workflow (M8) ─────────────────────────────────────────
+    # Write-tool calls awaiting human approval ({approval_id, tool, arguments}).
+    proposals: list[dict[str, object]]
+    # Workspace-relative paths edited during the current step.
+    applied: list[str]
+    # Reviewer feedback carried into the coder's retry ("" when none).
+    critique: str
+    # 0-based count of completed review rounds within the current step.
+    review_round: int
+    # Run-branch git anchors ("" / None when the run has no workspace).
+    branch: str
+    base_commit: str | None
 
 
 def initial_state(*, run_id: str, owner_id: str, workspace_id: str | None, goal: str) -> RunState:
@@ -34,4 +46,10 @@ def initial_state(*, run_id: str, owner_id: str, workspace_id: str | None, goal:
         step_index=0,
         transcript=[],
         status="pending",
+        proposals=[],
+        applied=[],
+        critique="",
+        review_round=0,
+        branch="",
+        base_commit=None,
     )

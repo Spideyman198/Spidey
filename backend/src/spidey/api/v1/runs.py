@@ -32,6 +32,7 @@ from spidey.agents.domain.runs import (
 from spidey.api.deps import CurrentUser, RequireDeveloper, RunServiceDep, SessionDep
 from spidey.platform.errors import NotFoundError
 from spidey.platform.events import RunEventReader, stream_key_for
+from spidey.workspaces.application import GitWorkflowService, branch_for_run
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -69,6 +70,7 @@ class RunResponse(BaseModel):
     goal: str
     status: RunStatus
     error: str | None
+    base_commit: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -274,6 +276,33 @@ async def get_timeline(
         )
         for e in events
     ]
+
+
+# ── diff (M8): what the run changed on its isolated branch ──────────────────
+class RunDiffResponse(BaseModel):
+    branch: str
+    base_commit: str | None
+    diff: str
+
+
+@router.get(
+    "/{run_id}/diff",
+    response_model=RunDiffResponse,
+    summary="Unified diff of the run's branch (committed steps + working tree)",
+)
+async def get_run_diff(
+    run_id: uuid.UUID,
+    request: Request,
+    service: RunServiceDep,
+    user: CurrentUser,
+) -> RunDiffResponse:
+    run = await service.get(owner_id=user.id, run_id=run_id)  # owner-scoped
+    if run.workspace_id is None:
+        raise NotFoundError("run has no workspace")
+    container = request.app.state.container
+    workflow = GitWorkflowService(git=container.git_provider, storage=container.workspace_storage)
+    diff = await workflow.run_diff(workspace_id=run.workspace_id, base=run.base_commit)
+    return RunDiffResponse(branch=branch_for_run(run_id), base_commit=run.base_commit, diff=diff)
 
 
 # ── scripted chat (M6) ───────────────────────────────────────────────────────
