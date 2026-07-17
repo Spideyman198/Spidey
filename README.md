@@ -1,41 +1,72 @@
 # 🕷️ Spidey
 
-**A production-grade autonomous coding agent platform.** Multi-agent planning, coding, review,
-sandboxed testing, debugging, and pull-request delivery over your repositories — engineered so it
-is safe to point at untrusted code, with a human approving every destructive action.
+**An autonomous coding agent that plans, writes, reviews, and tests changes across your
+repositories — engineered to run safely against untrusted code, with a human approving every
+destructive action.**
 
-<!-- Badges activate at first push / when pipelines are live — no placeholder-lying badges.
-CI · CodeQL · Coverage (Codecov) · Python 3.12+ · TypeScript · License: Apache-2.0 · SemVer -->
+[![CI](https://github.com/Spideyman198/Spidey/actions/workflows/ci.yml/badge.svg)](https://github.com/Spideyman198/Spidey/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Spideyman198/Spidey/actions/workflows/codeql.yml/badge.svg)](https://github.com/Spideyman198/Spidey/actions/workflows/codeql.yml)
+[![Security](https://github.com/Spideyman198/Spidey/actions/workflows/security.yml/badge.svg)](https://github.com/Spideyman198/Spidey/actions/workflows/security.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with pyright](https://img.shields.io/badge/pyright-strict-blue.svg)](https://microsoft.github.io/pyright/)
 
-> **Status: M9 complete** — on top of M0–M8 (auth, RBAC, audit, sessions, workspaces & ingestion,
-> parsing & symbol index, hybrid search, knowledge graph, provider gateway, tool plane, event
-> backbone, agent runtime with editable plans/approvals/budgets/replay, and the code-writing
-> coder/reviewer/git loop), the agent can now **run code safely**. A new **execution** context runs
-> the most dangerous capability behind a fail-closed `CommandPolicy` (argv-only allow-list; shell
-> attempts rejected; network installs approval-gated) and a hardened **ephemeral Docker sandbox**:
-> network `none`, non-root, read-only rootfs, one RW workspace mount (no host paths, no Docker
-> socket), CPU/memory/PID caps, wall-clock kill, byte-capped output, and an allow-listed, scrubbed
-> environment. **Terminal** and **Tester** agents (framework-detect → run → structured report) run
-> atop it. This is the security-critical milestone: a **red-team suite** of booby-trapped repos —
-> network exfiltration, fork bomb, host probe, runaway, log flood — is demonstrably contained.
-> Architecture frozen for v1.0 in the
-> [design review](docs/14-design-review.md). Next: [M10 — Debugger, Documenter & PR delivery](docs/04-milestones.md).
-> Badges, GIFs, and benchmarks appear as their milestones land.
+> **Status:** M9 of 15 milestones complete. See the [roadmap](docs/04-milestones.md) and the
+> [changelog](CHANGELOG.md).
 
-<!-- hero-gif: docs/assets/hero.gif — full run: goal → plan → approval → diff → tests → PR (M12) -->
+## Why Spidey?
 
-## What it does
+Autonomous coding agents are easy to demo and hard to trust. They execute code from repositories
+they have never seen, call external tools, and make irreversible changes — usually with no
+isolation, no audit trail, and no human in the loop.
 
-| | |
-| --- | --- |
-| 🧠 **Multi-agent runtime** | Planner, Coder, Reviewer, Tester, Debugger, Documenter — orchestrated with LangGraph, durable checkpoints, resumable across restarts |
-| 🔍 **Code intelligence** | Tree-sitter parsing (5+ languages), hybrid retrieval (dense + BM25 + knowledge graph), incremental indexing |
-| 🛡️ **Hostile-input security** | Repo content treated as attack surface: sandboxed execution (no network, non-root, quotas), prompt/retrieval/memory injection defenses, command allow-lists |
-| ✋ **Human-in-the-loop** | Approval gates on every destructive action — durable interrupts, approval inbox, full audit trail |
-| 🔌 **MCP-first tool plane** | Serves its tools over MCP; mounts external MCP servers (GitHub, PostgreSQL, browser, custom) with trust tiers and definition pinning |
-| 🎛️ **Provider-portable** | Anthropic, OpenAI, Gemini, Azure, Ollama, vLLM — per-role model routing by config only |
-| ⏪ **Replayable by construction** | Every run event-sourced: timeline UI, deterministic CI regression replays, comparative re-runs |
-| 📊 **Measured, not asserted** | Built-in evaluation framework (pass@k, retrieval P/R, agent success rate, safety corpus) gating CI; full OTel/Prometheus/Grafana/Jaeger observability |
+Spidey is built the other way around. Repository content is treated as hostile input and agent
+actions are reversible by default, so the system is safe to point at real, untrusted code:
+
+- **Untrusted code runs only in ephemeral, network-isolated Docker containers** — non-root,
+  read-only rootfs, CPU/memory/PID-capped, with output bounded and secret-scanned.
+- **Every destructive action passes a durable human-approval gate** — a file write, a command, or a
+  commit pauses the run until a human decides, and the pause survives restarts.
+- **Every run is event-sourced and replayable**, so behavior is auditable and reproduces
+  deterministically from fixtures.
+- **Bounded contexts with CI-enforced import boundaries** keep the architecture honest as it grows.
+
+## Highlights
+
+- ✓ **Multi-agent runtime** — Planner · Coder · Reviewer · Tester on LangGraph, durable and resumable
+- ✓ **Sandboxed execution** — untrusted commands and tests in hardened, network-isolated containers
+- ✓ **Human approval gates** — durable interrupts on every destructive action, fully audited
+- ✓ **Code intelligence** — Tree-sitter parsing + hybrid dense/BM25/knowledge-graph retrieval
+- ✓ **Event-driven & replayable** — transactional outbox → Redis Streams → SSE; deterministic replay
+- ✓ **MCP tool plane** — serves and mounts Model Context Protocol tools with trust tiers and pinning
+- ✓ **Provider-portable** — Anthropic, OpenAI, Gemini, Azure, Ollama, vLLM, routed per role by config
+- ✓ **Hexagonal architecture** — ports & adapters with import-linter-enforced context boundaries
+
+## Features
+
+- **Multi-agent runtime** — A LangGraph state machine (Planner → Coder → Reviewer → Tester) with
+  durable Postgres checkpoints, editable plans, and per-run step/token/cost budgets that halt a
+  runaway into `needs_human`. Runs resume across API and worker restarts.
+  → [Architecture](docs/02-architecture.md)
+- **Sandboxed execution** — Commands and tests run in fresh, disposable Docker containers: network
+  `none`, non-root, read-only rootfs, a single writable workspace mount, CPU/memory/PID caps,
+  wall-clock kill, and secret-scanned output. An argv-only `CommandPolicy` allow-list decides what
+  may run at all. → [Security](docs/11-security.md)
+- **Code intelligence** — Tree-sitter parsing across six languages (Python, JavaScript, TypeScript,
+  Go, Java, Rust) feeds a hybrid retriever — dense embeddings + BM25 + a Postgres-backed knowledge
+  graph — with incremental re-indexing on change. → [Retrieval](docs/06-retrieval.md)
+- **Tool plane (MCP)** — A single `ToolRegistry` choke point enforces RBAC, JSON-Schema validation,
+  side-effect gating, and output sanitization. Spidey serves its own tools over MCP and mounts
+  external MCP servers with trust tiers and definition pinning. → [Tool plane & MCP](docs/05-tooling-and-mcp.md)
+- **Events & replay** — A transactional outbox relays domain events to Redis Streams and a
+  cursor-resumable SSE timeline; runs are event-sourced and replay deterministically in CI.
+  → [Events & replay](docs/08-events-and-replay.md)
+- **Provider gateway** — One `ChatModel` seam spans Anthropic, OpenAI, Gemini, Azure, Ollama, and
+  vLLM with per-role routing, fallbacks, retries, budgets, caching, and redacted capture — all by
+  configuration. → [ADR-0009](docs/adr/0009-llm-gateway.md)
+- **Observability** — OpenTelemetry traces, Prometheus metrics, and Grafana/Jaeger dashboards wired
+  from the first milestone. → [Observability](docs/09-observability.md)
 
 ## Architecture
 
@@ -52,21 +83,17 @@ flowchart LR
     wrk --> llm[(Model providers)]
 ```
 
-**Docs:** [Requirements & threat model](docs/01-requirements.md) ·
-[Architecture](docs/02-architecture.md) · [Repo structure](docs/03-repository-structure.md) ·
-[Milestones](docs/04-milestones.md) · [Tool plane & MCP](docs/05-tooling-and-mcp.md) ·
-[Retrieval](docs/06-retrieval.md) · [Memory](docs/07-memory.md) ·
-[Events & replay](docs/08-events-and-replay.md) · [Observability](docs/09-observability.md) ·
-[Evaluation](docs/10-evaluation.md) · [Security](docs/11-security.md) ·
-[Deployment](docs/12-deployment.md) · [ADRs](docs/adr/README.md)
+Modular monolith, hexagonal bounded contexts (identity, workspaces, codeintel, llm, agents,
+execution, memory, evaluation) over a shared platform kernel. Full documentation, ADRs, and
+per-milestone security reviews live in **[docs/](docs/README.md)**.
 
 ## Quickstart
 
-Requirements: Docker, Python 3.12+, [uv](https://docs.astral.sh/uv/), make (or use the
-[devcontainer](.devcontainer/devcontainer.json) and skip all of that).
+Requirements: Docker, Python 3.12+, [uv](https://docs.astral.sh/uv/), and `make` — or use the
+[devcontainer](.devcontainer/devcontainer.json) and skip the local setup.
 
 ```bash
-git clone <repo> && cd spidey
+git clone https://github.com/Spideyman198/Spidey.git && cd Spidey
 cp .env.example .env        # set POSTGRES_PASSWORD + GF_SECURITY_ADMIN_PASSWORD
 make bootstrap              # backend deps + git hooks
 make dev                    # full stack: API, worker, beat, Postgres, Redis, Qdrant,
@@ -81,21 +108,21 @@ SPIDEY_BOOTSTRAP_PASSWORD='<a-strong-password>' \
 `make dev-min` starts the core services only; `make test lint typecheck security` runs the local
 quality gates. API docs: `http://localhost:8000/api/v1/docs` · Grafana: `:3000` · Jaeger: `:16686`.
 
-## Benchmarks *(published from M4 onward, generated by the eval harness — never hand-written)*
+## Benchmarks
 
-| Suite | Metric | Value |
-| --- | --- | --- |
-| Retrieval · Codegen · Agent tasks · Safety | P/R@k · pass@k · success rate & cost · injection resistance | *pending M4/M10* |
+Quality is measured, not asserted. The evaluation harness — retrieval P/R@k, codegen pass@k, agent
+success rate and cost, and a safety/injection corpus — runs as tiered gates in CI. Published numbers
+are generated by the harness (never hand-written) and land as the live-model suites are wired.
+See [docs/10-evaluation.md](docs/10-evaluation.md).
 
 ## Engineering standards
 
-Hexagonal bounded contexts (CI-enforced) · Pyright strict · attack-shaped security tests ·
-tiered eval gates in CI · SAST (CodeQL/Semgrep/Bandit) + SBOM + signed releases ·
-Conventional Commits, [Keep a Changelog](CHANGELOG.md), SemVer.
-See [docs/13-repo-standards.md](docs/13-repo-standards.md) and [CONTRIBUTING.md](CONTRIBUTING.md) *(M0)*.
+Hexagonal bounded contexts (CI-enforced) · Pyright strict · attack-shaped security tests · tiered
+eval gates in CI · SAST (CodeQL / Semgrep / Bandit) + dependency audit + signed releases ·
+Conventional Commits, [Keep a Changelog](CHANGELOG.md), SemVer. See
+[docs/13-repo-standards.md](docs/13-repo-standards.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License & acknowledgements
 
-[Apache-2.0](LICENSE) *(file lands in M0 — [rationale](docs/13-repo-standards.md#2-community--governance-files))*.
-Inspired by the engineering behind Claude Code, Devin, and Codex; built on LangGraph, Tree-sitter,
-Qdrant, FastAPI, and the MCP ecosystem.
+[Apache-2.0](LICENSE). Inspired by the engineering behind Claude Code, Devin, and Codex; built on
+LangGraph, Tree-sitter, Qdrant, FastAPI, and the MCP ecosystem.

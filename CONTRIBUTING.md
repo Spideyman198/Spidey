@@ -13,7 +13,7 @@ devcontainer prompt. Everything (Python 3.12, uv, Node 20, Docker-in-environment
 
 ```bash
 # Requirements: Python 3.12+, uv, Docker (for the service stack), Node 20+ (frontend, from M12)
-git clone <repo> && cd spidey
+git clone https://github.com/Spideyman198/Spidey.git && cd Spidey
 cp .env.example .env
 make bootstrap          # uv sync + pre-commit install
 make dev                # start the full compose stack
