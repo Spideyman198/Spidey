@@ -144,6 +144,39 @@ flowchart TB
 Node transitions publish the domain events (`TaskCreated`, `CodeGenerated`, `ReviewCompleted`,
 `TestsPassed/Failed`, `FixGenerated`, …) defined in [08-events-and-replay.md](08-events-and-replay.md) §3.
 
+### Run sequence — request → agent → sandbox → review → commit
+
+One end-to-end run. Human gates are durable LangGraph interrupts (checkpointed in Postgres), so an
+approval can arrive across a restart; the sandbox is the only path that executes repository code.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant API as FastAPI
+    participant Graph as LangGraph run
+    participant Reg as ToolRegistry
+    participant Sbx as Docker sandbox
+    participant Git as Git workflow
+
+    User->>API: POST /runs (goal)
+    API->>Graph: create run + enqueue (branch per run)
+    Graph->>Graph: Planner drafts plan
+    Graph-->>User: interrupt — approve plan (SSE)
+    User->>API: approve
+
+    Graph->>Reg: Coder proposes edit (write)
+    Reg-->>User: interrupt — approve edit (records Approval)
+    User->>API: approve
+    Reg->>Git: apply diff (secret-scanned)
+
+    Graph->>Reg: Tester runs the suite
+    Reg->>Sbx: execute tests (network none, non-root)
+    Sbx-->>Reg: structured result
+    Graph->>Graph: Reviewer critiques diff (bounded loop)
+    Graph->>Git: atomic commit on run branch
+    Graph-->>User: run complete (timeline via SSE)
+```
+
 ## 6. Core data model (ERD)
 
 ```mermaid

@@ -51,6 +51,33 @@ events on violation. **The defining asymmetry of this system:** Zone 3 exists to
 execute* Zone-0 content — so B4 is engineered as if compromise of the sandbox interior is routine,
 and the security property defended is the B4 wall, not sandbox-interior integrity.
 
+### The B4 sandbox boundary
+
+The trusted worker admits only argv the `CommandPolicy` allow-list permits and hands the container a
+scrubbed, secret-free environment. The container is treated as hostile: no network, a read-only
+rootfs with a single writable workspace mount, dropped capabilities, and CPU/memory/PID caps. Output
+comes back bounded and secret-scanned (B4r) before it can re-enter a prompt.
+
+```mermaid
+flowchart TB
+    subgraph worker[Worker — trusted]
+        pol[CommandPolicy<br/>argv allow-list]
+        scrub[env scrub +<br/>output secret-scan]
+    end
+    subgraph sbx[Ephemeral container — hostile by assumption]
+        cmd[untrusted command / tests]
+    end
+
+    pol -->|admitted argv only| cmd
+    scrub -->|inert, secret-free env| cmd
+    cmd -->|bounded, scrubbed output B4r| scrub
+
+    cmd -. network none .-> n((no egress))
+    cmd -. read-only rootfs .-> r((no host writes))
+    cmd -. cpu / mem / pid caps .-> c((no exhaustion))
+    cmd -. dropped caps + no-new-privileges .-> p((no escalation))
+```
+
 ## 2. AI-specific threats (STRIDE additions from this review)
 
 | Threat | Vector | Controls |

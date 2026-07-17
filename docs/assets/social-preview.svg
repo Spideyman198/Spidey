@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <!-- GitHub dark canvas -->
+  <rect width="1280" height="640" fill="#0d1117"/>
+  <rect x="0.5" y="0.5" width="1279" height="639" fill="none" stroke="#21262d"/>
+
+  <!-- subtle spider logomark, top-right -->
+  <g stroke="#484f58" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9">
+    <line x1="1108" y1="120" x2="1064" y2="96"/>
+    <line x1="1108" y1="128" x2="1058" y2="128"/>
+    <line x1="1108" y1="136" x2="1064" y2="160"/>
+    <line x1="1150" y1="120" x2="1194" y2="96"/>
+    <line x1="1150" y1="128" x2="1200" y2="128"/>
+    <line x1="1150" y1="136" x2="1194" y2="160"/>
+  </g>
+  <circle cx="1129" cy="118" r="12" fill="#484f58"/>
+  <circle cx="1129" cy="139" r="16" fill="#484f58"/>
+
+  <!-- wordmark -->
+  <text x="100" y="250" font-size="104" font-weight="700" fill="#e6edf3">Spidey</text>
+  <rect x="103" y="276" width="112" height="5" rx="2.5" fill="#388bfd"/>
+
+  <!-- one-line positioning -->
+  <text x="100" y="346" font-size="36" fill="#8b949e">Production-Oriented Autonomous Coding Agent</text>
+
+  <!-- capability chips -->
+  <g font-size="22" fill="#adbac7">
+    <g>
+      <rect x="100" y="410" width="260" height="48" rx="10" fill="#161b22" stroke="#30363d"/>
+      <text x="116" y="441">Multi-Agent Runtime</text>
+    </g>
+    <g>
+      <rect x="384" y="410" width="212" height="48" rx="10" fill="#161b22" stroke="#30363d"/>
+      <text x="400" y="441">Knowledge Graph</text>
+    </g>
+    <g>
+      <rect x="620" y="410" width="260" height="48" rx="10" fill="#161b22" stroke="#30363d"/>
+      <text x="636" y="441">Sandboxed Execution</text>
+    </g>
+    <g>
+      <rect x="100" y="478" width="200" height="48" rx="10" fill="#161b22" stroke="#30363d"/>
+      <text x="116" y="509">Human Approval</text>
+    </g>
+    <g>
+      <rect x="324" y="478" width="116" height="48" rx="10" fill="#161b22" stroke="#30363d"/>
+      <text x="340" y="509">FastAPI</text>
+    </g>
+    <g>
+      <rect x="464" y="478" width="80" height="48" rx="10" fill="#161b22" stroke="#30363d"/>
+      <text x="480" y="509">MCP</text>
+    </g>
+  </g>
+</svg>
