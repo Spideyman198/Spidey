@@ -61,8 +61,8 @@ comes back bounded and secret-scanned (B4r) before it can re-enter a prompt.
 ```mermaid
 flowchart TB
     subgraph worker[Worker — trusted]
-        pol[CommandPolicy<br/>argv allow-list]
-        scrub[env scrub +<br/>output secret-scan]
+        pol[CommandPolicy\nargv allow-list]
+        scrub[env scrub +\noutput secret-scan]
     end
     subgraph sbx[Ephemeral container — hostile by assumption]
         cmd[untrusted command / tests]
@@ -72,10 +72,10 @@ flowchart TB
     scrub -->|inert, secret-free env| cmd
     cmd -->|bounded, scrubbed output B4r| scrub
 
-    cmd -. network none .-> n((no egress))
-    cmd -. read-only rootfs .-> r((no host writes))
-    cmd -. cpu / mem / pid caps .-> c((no exhaustion))
-    cmd -. dropped caps + no-new-privileges .-> p((no escalation))
+    cmd -->|network none| n[no egress]
+    cmd -->|read-only rootfs| r[no host writes]
+    cmd -->|cpu / mem / pid caps| c[no exhaustion]
+    cmd -->|dropped caps + no-new-privileges| p[no escalation]
 ```
 
 ## 2. AI-specific threats (STRIDE additions from this review)
