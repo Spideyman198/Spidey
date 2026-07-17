@@ -122,6 +122,37 @@ class ApprovalResolved(EventPayload):
     approved: bool
 
 
+# ── coder / reviewer / git workflow (M8) ──────────────────────────────────────
+class CodeGenerated(EventPayload):
+    event_type: ClassVar[str] = "agents.code_generated"
+
+    step_index: int
+    files: list[str]  # workspace-relative paths the step edited
+
+
+class ReviewCompleted(EventPayload):
+    event_type: ClassVar[str] = "agents.review_completed"
+
+    step_index: int
+    iteration: int  # 1-based review round within the step
+    verdict: str  # approved | changes_requested
+
+
+class RunStepCommitted(EventPayload):
+    event_type: ClassVar[str] = "agents.step_committed"
+
+    step_index: int
+    commit_sha: str
+    branch: str
+
+
+class CommitBlocked(EventPayload):
+    event_type: ClassVar[str] = "agents.commit_blocked"
+
+    step_index: int
+    reason: str  # safe description — never carries the detected value
+
+
 # Registry: event_type → payload model, for re-validation on read (replay/SSE).
 EVENT_TYPES: dict[str, type[EventPayload]] = {
     payload.event_type: payload
@@ -136,6 +167,10 @@ EVENT_TYPES: dict[str, type[EventPayload]] = {
         PlanCreated,
         ApprovalRequested,
         ApprovalResolved,
+        CodeGenerated,
+        ReviewCompleted,
+        RunStepCommitted,
+        CommitBlocked,
     )
 }
 
