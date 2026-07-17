@@ -18,6 +18,7 @@ from qdrant_client import AsyncQdrantClient
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from spidey.codeintel.infrastructure import QdrantVectorIndex, TreeSitterParser
+from spidey.execution.infrastructure import DockerSandbox
 from spidey.identity.infrastructure import (
     Argon2PasswordHasher,
     JwtTokenIssuer,
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
         SparseEmbedder,
         VectorIndex,
     )
+    from spidey.execution.domain import Sandbox
     from spidey.identity.domain.ports import (
         LockoutStore,
         PasswordHasher,
@@ -155,6 +157,7 @@ class Container:
     llm_registry: ProviderRegistry
     response_cache: ResponseCache
     budget_ledger: BudgetLedger
+    sandbox: Sandbox
 
 
 def build_container(settings: Settings) -> Container:
@@ -210,6 +213,11 @@ def build_container(settings: Settings) -> Container:
             max_tokens=settings.llm_budget_max_tokens,
             max_cost_usd=settings.llm_budget_max_cost_usd,
             window_seconds=settings.llm_budget_window_seconds,
+        ),
+        sandbox=DockerSandbox(
+            image=settings.sandbox_image,
+            run_uid=settings.sandbox_run_uid,
+            egress_proxy_network=settings.sandbox_egress_network,
         ),
     )
 

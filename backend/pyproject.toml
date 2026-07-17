@@ -52,6 +52,8 @@ dependencies = [
   "langgraph>=0.2.60",
   "langgraph-checkpoint-postgres>=2.0",
   "psycopg[binary]>=3.3.4",
+  # Execution sandbox (M9): Docker SDK behind the Sandbox port (ADR-0007)
+  "docker>=7.1",
 ]
 
 [dependency-groups]
@@ -137,6 +139,7 @@ asyncio_mode = "auto"
 addopts = "-ra --strict-markers"
 markers = [
   "integration: requires reachable Postgres/Redis (skipped automatically otherwise)",
+  "sandbox: requires a reachable Docker daemon (skipped automatically otherwise)",
 ]
 filterwarnings = ["error::DeprecationWarning:spidey.*"]
 
@@ -174,6 +177,7 @@ forbidden_modules = [
   "spidey.workspaces",
   "spidey.codeintel",
   "spidey.llm",
+  "spidey.execution",
   "spidey.agents",
 ]
 
@@ -192,6 +196,7 @@ modules = [
   "spidey.workspaces",
   "spidey.codeintel",
   "spidey.llm",
+  "spidey.execution",
 ]
 
 [[tool.importlinter.contracts]]
@@ -246,6 +251,15 @@ layers = [
   "spidey.evaluation.infrastructure",
   "spidey.evaluation.application",
   "spidey.evaluation.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "execution is layered: infrastructure -> application -> domain"
+type = "layers"
+layers = [
+  "spidey.execution.infrastructure",
+  "spidey.execution.application",
+  "spidey.execution.domain",
 ]
 
 # agents is the orchestrator: layered like the rest, but deliberately NOT in the

@@ -163,6 +163,22 @@ class Settings(BaseSettings):
     llm_budget_max_cost_usd: float = Field(default=25.0, gt=0)
     llm_budget_window_seconds: int = Field(default=86_400, ge=60)
 
+    # ── Execution sandbox (execution context, M9) ─────────────────────────────
+    # The hardened image DockerSandbox runs untrusted code in (ADR-0007). Pin by
+    # digest in production. Every run is a fresh container with these ceilings.
+    sandbox_image: str = Field(default="spidey-sandbox:latest")
+    sandbox_run_uid: int = Field(default=65532, ge=1)
+    sandbox_cpus: float = Field(default=1.0, gt=0, le=8)
+    sandbox_memory_mb: int = Field(default=512, ge=64, le=8192)
+    sandbox_pids: int = Field(default=256, ge=16, le=4096)
+    sandbox_timeout_seconds: int = Field(default=120, ge=1, le=1800)
+    sandbox_max_output_bytes: int = Field(default=1_000_000, ge=1024, le=16_000_000)
+    # Pre-created allow-list-only docker network for approved installs; None →
+    # even an approved network run stays offline (fail-closed).
+    sandbox_egress_network: str | None = Field(default=None)
+    # Pre-authorize network installs for a run (default off: each is a human gate).
+    sandbox_allow_network_installs: bool = Field(default=False)
+
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
     otel_service_name: str = Field(default="spidey", min_length=1)
 

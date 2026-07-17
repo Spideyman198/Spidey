@@ -153,6 +153,26 @@ class CommitBlocked(EventPayload):
     reason: str  # safe description — never carries the detected value
 
 
+# ── execution / sandbox (M9) ──────────────────────────────────────────────────
+class CommandExecuted(EventPayload):
+    event_type: ClassVar[str] = "execution.command_executed"
+
+    argv0: str  # only the executable name — never the full argv (may hold data)
+    admitted: bool
+    exit_code: int | None = None
+    timed_out: bool = False
+    network: str = "none"
+
+
+class TestsCompleted(EventPayload):
+    event_type: ClassVar[str] = "execution.tests_completed"
+
+    framework: str
+    passed: bool
+    passed_count: int | None = None
+    failed_count: int | None = None
+
+
 # Registry: event_type → payload model, for re-validation on read (replay/SSE).
 EVENT_TYPES: dict[str, type[EventPayload]] = {
     payload.event_type: payload
@@ -171,6 +191,8 @@ EVENT_TYPES: dict[str, type[EventPayload]] = {
         ReviewCompleted,
         RunStepCommitted,
         CommitBlocked,
+        CommandExecuted,
+        TestsCompleted,
     )
 }
 
