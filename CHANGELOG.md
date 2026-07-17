@@ -96,8 +96,8 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   `workspace.read_file` and `workspace.apply_edit` (exact-match replace / create, returns the
   unified diff, `SideEffect.WRITE` so the registry denies it without a resolved human approval);
   **secret-scan on every diff** (new `platform.security.scan_for_secrets`): a credential-shaped
-  hunk blocks the edit *before it touches disk* and blocks the step commit — findings report kind
-  + line, never the value. **Branch-per-run git workflow**: `GitProvider` grows local
+  hunk blocks the edit *before it touches disk* and blocks the step commit — findings report the
+  kind and line, never the value. **Branch-per-run git workflow**: `GitProvider` grows local
   ensure-repo/ensure-branch/commit-all/diff ops (network-free; repository-local commit identity);
   `GitWorkflowService` isolates every run on `spidey/run-<id>`, baselines the tree, and lands each
   step as an **atomic conventional commit** — never when the scanned diff is dirty. The run graph

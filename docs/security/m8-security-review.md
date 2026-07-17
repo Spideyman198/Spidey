@@ -32,6 +32,11 @@ the run diff API · **Verdict: PASS**
 - **Filesystem stays native (ADR-0008/0010).** Containment and diff scanning are our invariants;
   serving edits through an external MCP filesystem server would move them outside the choke point.
   `workspace.*` tools are served *over* MCP, never replaced by one.
+- **The no-direct-file-IO invariant is machine-enforced.** The exact-match edit engine (read,
+  replace, diff, scan, write) lives in `workspaces.application.edits`, beside `SafeFileSystem`;
+  the `agents` provider only maps its typed outcome to a `ToolResult`. The platform semgrep rule
+  (`spidey-agents-no-direct-file-io`) therefore holds with zero suppressions — agent code
+  *cannot* grow a raw file access without failing SAST.
 - **Exact-match edits, not free-form writes.** `apply_edit` replaces one unique occurrence (or
   creates a new file); the returned artifact *is* the unified diff. Reviewability is a security
   property here: the human approving and the reviewer critiquing see precisely what changes.
