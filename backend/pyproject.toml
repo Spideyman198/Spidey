@@ -5,7 +5,7 @@ description = "Production-grade autonomous coding agent platform"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-authors = [{ name = "Kinan Alrefai", email = "kinanalrefai04@gmail.com" }]
+authors = [{ name = "Kenan Eliyan", email = "eliyankenan@gmail.com" }]
 dependencies = [
   # API
   "fastapi>=0.115",
