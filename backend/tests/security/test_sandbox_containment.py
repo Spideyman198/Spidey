@@ -91,7 +91,10 @@ class TestContainment:
     async def test_runs_as_non_root(self, tmp_path: Path) -> None:
         result = await _run(["python", "-c", "import os; print(os.getuid())"], str(tmp_path))
         assert result.ok
-        assert result.stdout.strip().endswith("65534")  # nobody, never 0
+        uid = int(result.stdout.strip())
+        assert uid != 0  # the security property: never root
+        # Runs as the workspace owner so the one RW mount is writable to it.
+        assert uid == tmp_path.stat().st_uid
 
     async def test_root_filesystem_is_read_only(self, tmp_path: Path) -> None:
         # Tampering with the image / host-shaped paths fails: rootfs is read-only.

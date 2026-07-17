@@ -116,7 +116,7 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   executable are rejected), allow-lists known-safe base commands, escalates everything else to
   `needs_approval` (never fail-open), and gates network subcommands (installs) behind an explicit
   grant + egress proxy. **DockerSandbox** (ADR-0007) runs every command in a fresh, disposable
-  container: network `none` by default, non-root fixed UID, read-only rootfs + `noexec/nosuid`
+  container: network `none` by default, non-root (the workspace-owner UID), read-only rootfs + `noexec/nosuid`
   tmpfs, a single RW workspace bind mount (no host paths, no Docker socket), cgroup CPU/memory/**PID**
   caps, `cap-drop ALL` + `no-new-privileges`, wall-clock kill, and byte-capped output — a hostile
   command degrades to a typed `ExecutionResult`, never an exception. **Environment is allow-listed**

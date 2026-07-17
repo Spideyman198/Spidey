@@ -6,8 +6,9 @@ optional:
 
 - **network none** (unless the request explicitly asked for the egress-proxy
   posture) — a malicious ``postinstall`` cannot phone home or exfiltrate;
-- **non-root, fixed UID**, **read-only rootfs** + small ``tmpfs`` for ``/tmp`` —
-  the container cannot persist to or tamper with the image;
+- **non-root** (runs as the workspace-owner UID, never root), **read-only
+  rootfs** + small ``tmpfs`` for ``/tmp`` — the container cannot persist to or
+  tamper with the image, and the one RW mount stays writable with owned files;
 - **one RW bind mount**: the workspace copy at the workdir, nothing else from the
   host — no source, no Docker socket, no host paths;
 - **cgroup caps**: CPU, memory (OOM-kill), and **PID limit** (a fork bomb hits a
@@ -23,6 +24,7 @@ crash.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import docker
@@ -47,7 +49,7 @@ class DockerSandbox:
         self,
         *,
         image: str,
-        run_uid: int = 65534,  # nobody
+        run_uid: int = 65534,  # nobody — fallback identity when no owner is resolvable
         egress_proxy_network: str | None = None,
     ) -> None:
         self._image = image
@@ -55,6 +57,24 @@ class DockerSandbox:
         # The pre-created, allow-list-only docker network for approved installs.
         # None → egress requests still run with no network (fail-closed).
         self._egress_network = egress_proxy_network
+
+    def _run_user(self, workspace_path: str) -> str:
+        """The non-root identity the container runs as.
+
+        A hostile container is contained by the *wall* (no network, read-only
+        rootfs, dropped caps, one mount), not by which non-root UID it holds — so
+        we run as the **workspace owner's** UID:GID. That keeps the single RW
+        mount writable (the Tester must write caches/artifacts) and leaves created
+        files owned by the worker for cleanup, while never being root. Where no
+        real owner is resolvable (Windows dev host, or a root-owned tree), fall
+        back to the fixed unprivileged UID."""
+        try:
+            stat = Path(workspace_path).stat()
+        except OSError:
+            return str(self._uid)
+        if stat.st_uid > 0:  # a genuine non-root owner (POSIX host)
+            return f"{stat.st_uid}:{stat.st_gid}"
+        return str(self._uid)
 
     async def run(self, request: ExecutionRequest) -> ExecutionResult:
         try:
@@ -82,7 +102,7 @@ class DockerSandbox:
             "image": self._image,
             "command": request.argv,
             "working_dir": request.workdir,
-            "user": str(self._uid),
+            "user": self._run_user(request.workspace_path),
             "environment": dict(request.env),
             "network_mode": network,
             "network_disabled": network == "none",

@@ -22,7 +22,7 @@
 | Network is a privilege | Default `network none`; install subcommands are `NEEDS_APPROVAL` + `EGRESS_PROXY`, and even then only if an egress network is configured (else offline) | `test_policy` network gating; `test_terminal` egress posture |
 | Ephemeral, disposable containers | A fresh container per `run`, force-removed in `finally` — no state survives between runs | `DockerSandbox._run_sync` / `_force_remove`; red-team suite reuse |
 | No network by default (B4) | `network_mode=none` + `network_disabled` unless an explicit egress grant | **RT-1** exfiltration blocked |
-| Non-root, fixed UID | Container runs as UID 65532 (nobody-class); image ships a non-root user | **RT-2** `getuid()==65532` |
+| Non-root always | Container runs as the workspace **owner** UID:GID (never root) — a hostile container is contained by the wall, not the UID number, and this keeps the one RW mount writable with correctly-owned files; a fixed unprivileged UID is the fallback where no owner resolves | **RT-2** `getuid() != 0` and equals the workspace owner |
 | Read-only rootfs + tmpfs | `read_only=True`; only `/tmp` (noexec,nosuid, size-capped) and the workspace mount are writable | **RT-3** write to `/etc` fails; **RT-4** workspace writable |
 | One RW mount, nothing else | Single workspace bind mount at the workdir; **no host paths, no Docker socket** | `_create_kwargs` volumes; **RT-4** isolation |
 | Resource caps (fork bomb / OOM) | cgroup `nano_cpus`, `mem_limit` (+ no swap), **`pids_limit`**; `cap_drop ALL` + `no-new-privileges` | **RT-6** fork bomb contained by PID cap |
@@ -42,7 +42,7 @@ event. Verified in CI against a real Linux Docker daemon.
 | # | Attack | Result |
 | --- | --- | --- |
 | RT-1 | Malicious postinstall opens a socket to a public host (exfiltration / C2) | **Blocked** — `network=none`; connection fails, non-zero exit |
-| RT-2 | Privilege assumptions (writes as root, setuid) | **Blocked** — runs as UID 65532; `no-new-privileges`, `cap-drop ALL` |
+| RT-2 | Privilege assumptions (writes as root, setuid) | **Blocked** — non-root (workspace-owner UID); `no-new-privileges`, `cap-drop ALL` |
 | RT-3 | Tamper with the image / host-shaped paths (`/etc/...`) | **Blocked** — read-only rootfs; write fails |
 | RT-4 | Reach host files outside the workspace | **Blocked** — only the workspace bind mount is present and writable |
 | RT-5 | Runaway process (infinite loop / hang) | **Killed** — wall-clock timeout; `timed_out`, exit `None` |
