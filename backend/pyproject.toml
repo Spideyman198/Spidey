@@ -8,7 +8,7 @@ license = "Apache-2.0"
 authors = [{ name = "Kenan Eliyan", email = "eliyankenan@gmail.com" }]
 dependencies = [
   # API
-  "fastapi>=0.115",
+  "fastapi>=0.139.2",
   "uvicorn[standard]>=0.34",
   # Contracts & config
   "pydantic[email]>=2.10",
