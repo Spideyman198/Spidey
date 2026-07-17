@@ -7,17 +7,19 @@ is safe to point at untrusted code, with a human approving every destructive act
 <!-- Badges activate at first push / when pipelines are live — no placeholder-lying badges.
 CI · CodeQL · Coverage (Codecov) · Python 3.12+ · TypeScript · License: Apache-2.0 · SemVer -->
 
-> **Status: M8 complete** — on top of M0–M7 (auth, RBAC, audit, sessions, workspaces & ingestion,
+> **Status: M9 complete** — on top of M0–M8 (auth, RBAC, audit, sessions, workspaces & ingestion,
 > parsing & symbol index, hybrid search, knowledge graph, provider gateway, tool plane, event
-> backbone, agent runtime with editable plans, approval gates, budgets, and deterministic replay),
-> the agent now **writes code**: diff-based edit tools through `SafeFileSystem`, with every diff
-> **secret-scanned before it touches disk or a commit**. Each run works on its own git branch
-> (`spidey/run-<id>`) and lands every step as an **atomic conventional commit** — a credential-shaped
-> hunk blocks the commit outright. The run graph is the full docs/02 flow: **Coder** proposes edits
-> (each one parked behind a recorded human `Approval`), **Reviewer** critiques the step's diff in a
-> bounded loop that demonstrably catches and repairs bad edits, and the step commits atomically.
-> `GET /runs/{id}/diff` serves the run's cumulative diff. Architecture frozen for v1.0 in the
-> [design review](docs/14-design-review.md). Next: [M9 — sandboxed execution: Terminal & Tester](docs/04-milestones.md).
+> backbone, agent runtime with editable plans/approvals/budgets/replay, and the code-writing
+> coder/reviewer/git loop), the agent can now **run code safely**. A new **execution** context runs
+> the most dangerous capability behind a fail-closed `CommandPolicy` (argv-only allow-list; shell
+> attempts rejected; network installs approval-gated) and a hardened **ephemeral Docker sandbox**:
+> network `none`, non-root, read-only rootfs, one RW workspace mount (no host paths, no Docker
+> socket), CPU/memory/PID caps, wall-clock kill, byte-capped output, and an allow-listed, scrubbed
+> environment. **Terminal** and **Tester** agents (framework-detect → run → structured report) run
+> atop it. This is the security-critical milestone: a **red-team suite** of booby-trapped repos —
+> network exfiltration, fork bomb, host probe, runaway, log flood — is demonstrably contained.
+> Architecture frozen for v1.0 in the
+> [design review](docs/14-design-review.md). Next: [M10 — Debugger, Documenter & PR delivery](docs/04-milestones.md).
 > Badges, GIFs, and benchmarks appear as their milestones land.
 
 <!-- hero-gif: docs/assets/hero.gif — full run: goal → plan → approval → diff → tests → PR (M12) -->

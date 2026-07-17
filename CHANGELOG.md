@@ -110,3 +110,21 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   criteria proven offline against real git repos: a scoped change lands on the isolated run branch
   end to end, and a planted bad edit is caught by the reviewer and repaired by the coder's second
   pass (critique demonstrably steering the retry).
+- M9 sandboxed execution — Terminal & Tester (the security-critical milestone): a new **execution**
+  bounded context wrapping the most dangerous capability behind a narrow `Sandbox` port and a
+  fail-closed `CommandPolicy`. **CommandPolicy** admits *argv only* (no shell — metacharacters in the
+  executable are rejected), allow-lists known-safe base commands, escalates everything else to
+  `needs_approval` (never fail-open), and gates network subcommands (installs) behind an explicit
+  grant + egress proxy. **DockerSandbox** (ADR-0007) runs every command in a fresh, disposable
+  container: network `none` by default, non-root fixed UID, read-only rootfs + `noexec/nosuid`
+  tmpfs, a single RW workspace bind mount (no host paths, no Docker socket), cgroup CPU/memory/**PID**
+  caps, `cap-drop ALL` + `no-new-privileges`, wall-clock kill, and byte-capped output — a hostile
+  command degrades to a typed `ExecutionResult`, never an exception. **Environment is allow-listed**
+  (the sandbox inherits none of the worker's secrets) and **output is secret-scanned** before it
+  leaves the boundary (B4r). **Terminal** and **Tester** services (framework detect → fixed
+  allow-listed command → structured pass/fail report) run atop it, surfaced as native
+  `terminal.run` (WRITE, approval-gated) and `tester.run` (READ, contained) tools plus a hardened
+  digest-pinnable `sandbox/Dockerfile`. Adds execution config, `execution.command_executed` /
+  `execution.tests_completed` events, and a **red-team containment suite** (`tests/security`): a
+  booby-trapped repo attempting network exfiltration, a fork bomb, a host-filesystem probe, a
+  runaway process, and a log flood is fully contained and audited (exit criterion).
