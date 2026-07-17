@@ -92,3 +92,21 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   transcript, status, event sequence) from committed fixtures and fails on any non-determinism or
   drift. Adds `runs`/`plans`/`approvals` tables (LangGraph's own checkpoint tables are created and
   owned by the checkpointer, not Alembic) and the `psycopg[binary]` driver for it.
+- M8 coder, reviewer & git integration: **diff-based edit tools** through `SafeFileSystem` —
+  `workspace.read_file` and `workspace.apply_edit` (exact-match replace / create, returns the
+  unified diff, `SideEffect.WRITE` so the registry denies it without a resolved human approval);
+  **secret-scan on every diff** (new `platform.security.scan_for_secrets`): a credential-shaped
+  hunk blocks the edit *before it touches disk* and blocks the step commit — findings report kind
+  + line, never the value. **Branch-per-run git workflow**: `GitProvider` grows local
+  ensure-repo/ensure-branch/commit-all/diff ops (network-free; repository-local commit identity);
+  `GitWorkflowService` isolates every run on `spidey/run-<id>`, baselines the tree, and lands each
+  step as an **atomic conventional commit** — never when the scanned diff is dirty. The run graph
+  becomes the docs/02 §5 flow: **coder** (tool-grounded, convention-primed; write calls become
+  recorded Approval *proposals* that park the run) → edit-approval gate (durable interrupt) →
+  **apply_edits** (invokes only human-granted proposals; the registry re-validates every grant) →
+  **reviewer** (critiques the step's diff; **bounded critique loop** feeds the critique back to the
+  coder) → **commit**. Adds `runs.base_commit` (the run's diff anchor), `GET /runs/{id}/diff`, and
+  M8 events (`code_generated`, `review_completed`, `step_committed`, `commit_blocked`). Exit
+  criteria proven offline against real git repos: a scoped change lands on the isolated run branch
+  end to end, and a planted bad edit is caught by the reviewer and repaired by the coder's second
+  pass (critique demonstrably steering the retry).

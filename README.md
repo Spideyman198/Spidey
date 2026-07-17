@@ -7,17 +7,17 @@ is safe to point at untrusted code, with a human approving every destructive act
 <!-- Badges activate at first push / when pipelines are live — no placeholder-lying badges.
 CI · CodeQL · Coverage (Codecov) · Python 3.12+ · TypeScript · License: Apache-2.0 · SemVer -->
 
-> **Status: M7 complete** — on top of M0–M6 (auth, RBAC, audit, sessions, workspaces & ingestion,
+> **Status: M8 complete** — on top of M0–M7 (auth, RBAC, audit, sessions, workspaces & ingestion,
 > parsing & symbol index, hybrid search, knowledge graph, provider gateway, tool plane, event
-> backbone), the platform now has its **agent runtime**: durable, resumable runs on an explicit
-> LangGraph state machine (`plan → approve → execute* → finalize`) with a Postgres checkpointer, so a
-> pause survives a restart. Runs draft a **human-editable plan** and block on an **approval gate**;
-> **per-run budgets** halt a runaway into `needs_human` instead of spending unbounded; and the single
-> `ToolRegistry` choke point enforces the **side-effect invariant** — a write/destructive tool runs
-> only against a resolved, non-transferable human `Approval`. Owner-scoped REST endpoints drive the
-> lifecycle over the shared SSE stream, and a T1 golden-replay suite proves a completed run
-> reconstructs its timeline deterministically from fixtures. Architecture frozen for v1.0 in the
-> [design review](docs/14-design-review.md). Next: [M8 — code editing & execution tools](docs/04-milestones.md).
+> backbone, agent runtime with editable plans, approval gates, budgets, and deterministic replay),
+> the agent now **writes code**: diff-based edit tools through `SafeFileSystem`, with every diff
+> **secret-scanned before it touches disk or a commit**. Each run works on its own git branch
+> (`spidey/run-<id>`) and lands every step as an **atomic conventional commit** — a credential-shaped
+> hunk blocks the commit outright. The run graph is the full docs/02 flow: **Coder** proposes edits
+> (each one parked behind a recorded human `Approval`), **Reviewer** critiques the step's diff in a
+> bounded loop that demonstrably catches and repairs bad edits, and the step commits atomically.
+> `GET /runs/{id}/diff` serves the run's cumulative diff. Architecture frozen for v1.0 in the
+> [design review](docs/14-design-review.md). Next: [M9 — sandboxed execution: Terminal & Tester](docs/04-milestones.md).
 > Badges, GIFs, and benchmarks appear as their milestones land.
 
 <!-- hero-gif: docs/assets/hero.gif — full run: goal → plan → approval → diff → tests → PR (M12) -->

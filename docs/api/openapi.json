@@ -816,8 +816,49 @@
         "title": "RunCreatedResponse",
         "type": "object"
       },
+      "RunDiffResponse": {
+        "properties": {
+          "base_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Commit"
+          },
+          "branch": {
+            "title": "Branch",
+            "type": "string"
+          },
+          "diff": {
+            "title": "Diff",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch",
+          "base_commit",
+          "diff"
+        ],
+        "title": "RunDiffResponse",
+        "type": "object"
+      },
       "RunResponse": {
         "properties": {
+          "base_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Commit"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -889,6 +930,7 @@
           "goal",
           "status",
           "error",
+          "base_commit",
           "created_at",
           "updated_at"
         ],
@@ -1908,6 +1950,54 @@
           }
         ],
         "summary": "Cancel a run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/diff": {
+      "get": {
+        "operationId": "get_run_diff_api_v1_runs__run_id__diff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDiffResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unified diff of the run's branch (committed steps + working tree)",
         "tags": [
           "runs"
         ]
