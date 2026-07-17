@@ -142,6 +142,16 @@ class FakeGitProvider:
     async def head_commit(self, path: str) -> CloneResult | None:
         return None
 
+    async def ensure_repo(self, path: str, *, author_name: str, author_email: str) -> None: ...
+
+    async def ensure_branch(self, path: str, branch: str) -> None: ...
+
+    async def commit_all(self, path: str, *, message: str) -> str | None:
+        return None
+
+    async def diff(self, path: str, *, base: str | None = None) -> str:
+        return ""
+
 
 @dataclass
 class _AuditEvent:

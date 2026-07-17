@@ -64,11 +64,13 @@ class CloneResult(BaseModel):
 
 
 class GitProvider(Protocol):
-    """Clones a remote repository into a destination directory.
+    """Clones a remote repository and manages the local run-branch workflow.
 
-    Implementations must validate the URL against the SSRF allow-list before
-    any network activity, and must never let a token appear in an error message
-    or log line.
+    Clone implementations must validate the URL against the SSRF allow-list
+    before any network activity, and must never let a token appear in an error
+    message or log line. The local operations (M8) never touch the network —
+    branch-per-run isolation and commits are strictly workspace-local; pushing
+    is a later, separately-gated milestone.
     """
 
     async def clone(
@@ -82,6 +84,25 @@ class GitProvider(Protocol):
 
     async def head_commit(self, path: str) -> CloneResult | None:
         """Read HEAD of a git repo at ``path``, or None if it is not one."""
+        ...
+
+    async def ensure_repo(self, path: str, *, author_name: str, author_email: str) -> None:
+        """Open the repo at ``path``, initializing one if absent, and set the
+        local commit identity (never the user's global config)."""
+        ...
+
+    async def ensure_branch(self, path: str, branch: str) -> None:
+        """Create the branch if missing and check it out (idempotent)."""
+        ...
+
+    async def commit_all(self, path: str, *, message: str) -> str | None:
+        """Stage every change and commit atomically. Returns the new commit sha,
+        or None when the tree is clean (an empty commit is never created)."""
+        ...
+
+    async def diff(self, path: str, *, base: str | None = None) -> str:
+        """Unified diff of the working tree (including new files) against
+        ``base`` (a ref/sha), defaulting to HEAD."""
         ...
 
 
