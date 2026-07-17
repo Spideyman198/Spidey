@@ -21,7 +21,11 @@ from langgraph.types import Command
 from spidey.agents.application import ToolRegistry
 from spidey.agents.domain.runs import RunStatus, is_terminal
 from spidey.agents.graph import GraphNodes, build_run_graph, initial_state
-from spidey.agents.infrastructure import CodeEditProvider, CodeSearchProvider
+from spidey.agents.infrastructure import (
+    CodeEditProvider,
+    CodeSearchProvider,
+    SandboxToolProvider,
+)
 from spidey.agents.infrastructure.run_store import PostgresRunStore
 from spidey.llm.application import Gateway
 from spidey.llm.infrastructure import PostgresInteractionCapture
@@ -65,6 +69,12 @@ async def _run(run_id: uuid.UUID) -> None:
                         vector_index=container.vector_index,
                     ),
                     CodeEditProvider(storage=container.workspace_storage),
+                    SandboxToolProvider(
+                        sandbox=container.sandbox,
+                        storage=container.workspace_storage,
+                        events=events,
+                        allow_network_installs=(container.settings.sandbox_allow_network_installs),
+                    ),
                 ],
                 events=events,
             )
