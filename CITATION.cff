@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Spidey: a production-oriented autonomous coding agent"
+abstract: >-
+  An autonomous coding agent that plans, writes, reviews, and tests changes
+  across repositories, engineered to run safely against untrusted code with a
+  human approving every destructive action.
+type: software
+authors:
+  - given-names: Kenan
+    family-names: Eliyan
+    email: eliyankenan@gmail.com
+repository-code: "https://github.com/Spideyman198/Spidey"
+url: "https://github.com/Spideyman198/Spidey"
+license: Apache-2.0
+keywords:
+  - autonomous-agents
+  - ai-coding-agent
+  - langgraph
+  - mcp
+  - sandbox
