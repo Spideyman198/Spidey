@@ -1,3 +1,7 @@
+from spidey.evaluation.application.agent_task_suite import (
+    AgentTaskEvalSuite,
+    GroundednessEvalSuite,
+)
 from spidey.evaluation.application.baselines import check_baselines, load_baselines
 from spidey.evaluation.application.registry import SuiteRegistry, build_default_registry
 from spidey.evaluation.application.replay_suite import AgentReplayEvalSuite
@@ -6,6 +10,8 @@ from spidey.evaluation.application.runner import run_tier
 
 __all__ = [
     "AgentReplayEvalSuite",
+    "AgentTaskEvalSuite",
+    "GroundednessEvalSuite",
     "RetrievalEvalSuite",
     "SuiteRegistry",
     "build_default_registry",
