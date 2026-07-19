@@ -12,7 +12,7 @@ destructive action.**
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with pyright](https://img.shields.io/badge/pyright-strict-blue.svg)](https://microsoft.github.io/pyright/)
 
-> **Status:** M10 of 15 milestones complete. See the [roadmap](docs/04-milestones.md) and the
+> **Status:** M11 of 15 milestones complete. See the [roadmap](docs/04-milestones.md) and the
 > [changelog](CHANGELOG.md).
 
 ## Why Spidey?
@@ -38,6 +38,7 @@ actions are reversible by default, so the system is safe to point at real, untru
 - ✓ **Sandboxed execution** — untrusted commands and tests in hardened, network-isolated containers
 - ✓ **Human approval gates** — durable interrupts on every destructive action, fully audited
 - ✓ **Code intelligence** — Tree-sitter parsing + hybrid dense/BM25/knowledge-graph retrieval
+- ✓ **Long-term memory** — typed, attributed, scope-isolated recall behind a fact-only write gate
 - ✓ **Event-driven & replayable** — transactional outbox → Redis Streams → SSE; deterministic replay
 - ✓ **MCP tool plane** — serves and mounts Model Context Protocol tools with trust tiers and pinning
 - ✓ **Provider-portable** — Anthropic, OpenAI, Gemini, Azure, Ollama, vLLM, routed per role by config

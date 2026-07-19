@@ -141,3 +141,18 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   `pull_request_opened` / `run_reported` events, **agent-task** and **groundedness** eval suites
   with the first committed success-rate baseline, and an offline exit-criterion test proving
   **fix → tests → approval → PR** end to end.
+- M11 long-term memory: a typed, attributed memory system with one hard invariant — **a memory is a
+  fact, never an instruction** (docs/07). Five kinds (repository / semantic / procedural / episodic /
+  evaluation) behind one schema, scoped by `workspace_id` / `user_id` as a hard recall boundary.
+  Every write passes a **write gate** (injection/imperative rejection, PII+secret scrub *before*
+  storage, scope validation — `semantic` carries no workspace scope — and dedupe), so an agent (or
+  repo content that reached one) cannot persist an imperative that survives across sessions. Only
+  **end-of-run distillation** and an explicit user "remember this" write; agents never write mid-run.
+  **Recall** feeds the planner scope-filtered, semantically-ranked memories as *inert attributed
+  data* ("previously observed, confidence 0.8"), double-filtered by scope (store pool + vector
+  search). Confidence **reinforces on success and decays on failure**, so poisoned or stale memories
+  die from evidence. A `memories` table + Qdrant `memories` collection, owner-scoped management API
+  (`GET`/`POST`/`DELETE /memories`) where **delete removes the record and the vector** (FR-5.3), and
+  a **memory-poisoning safety suite**: a corpus of imperatives, injections, secrets, and cross-scope
+  leaks is fully contained by the gate (containment baseline 1.0). Cross-session benefit, deletion,
+  and poison-containment are each proven offline.
