@@ -12,7 +12,7 @@ destructive action.**
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with pyright](https://img.shields.io/badge/pyright-strict-blue.svg)](https://microsoft.github.io/pyright/)
 
-> **Status:** M9 of 15 milestones complete. See the [roadmap](docs/04-milestones.md) and the
+> **Status:** M10 of 15 milestones complete. See the [roadmap](docs/04-milestones.md) and the
 > [changelog](CHANGELOG.md).
 
 ## Why Spidey?
@@ -34,7 +34,7 @@ actions are reversible by default, so the system is safe to point at real, untru
 
 ## Highlights
 
-- ✓ **Multi-agent runtime** — Planner · Coder · Reviewer · Tester on LangGraph, durable and resumable
+- ✓ **Multi-agent runtime** — Planner · Coder · Reviewer · Tester · Debugger · Documenter on LangGraph, durable and resumable
 - ✓ **Sandboxed execution** — untrusted commands and tests in hardened, network-isolated containers
 - ✓ **Human approval gates** — durable interrupts on every destructive action, fully audited
 - ✓ **Code intelligence** — Tree-sitter parsing + hybrid dense/BM25/knowledge-graph retrieval
@@ -45,10 +45,13 @@ actions are reversible by default, so the system is safe to point at real, untru
 
 ## Features
 
-- **Multi-agent runtime** — A LangGraph state machine (Planner → Coder → Reviewer → Tester) with
-  durable Postgres checkpoints, editable plans, and per-run step/token/cost budgets that halt a
-  runaway into `needs_human`. Runs resume across API and worker restarts.
-  → [Architecture](docs/02-architecture.md)
+- **Multi-agent runtime** — A LangGraph state machine (Planner → Coder → Reviewer → Tester →
+  Debugger → Documenter → PR) with durable Postgres checkpoints, editable plans, a bounded fix-retry
+  loop, and per-run step/token/cost budgets that halt a runaway into `needs_human`. Runs resume
+  across API and worker restarts. → [Architecture](docs/02-architecture.md)
+- **Gated PR delivery** — Passing runs open a GitHub pull request only past a durable human
+  approval gate; the PR body carries the plan summary and test evidence, and `GET /runs/{id}/report`
+  projects the run's timeline into a structured report. → [Tool plane & MCP](docs/05-tooling-and-mcp.md)
 - **Sandboxed execution** — Commands and tests run in fresh, disposable Docker containers: network
   `none`, non-root, read-only rootfs, a single writable workspace mount, CPU/memory/PID caps,
   wall-clock kill, and secret-scanned output. An argv-only `CommandPolicy` allow-list decides what

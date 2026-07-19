@@ -128,3 +128,16 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   `execution.tests_completed` events, and a **red-team containment suite** (`tests/security`): a
   booby-trapped repo attempting network exfiltration, a fork bomb, a host-filesystem probe, a
   runaway process, and a log flood is fully contained and audited (exit criterion).
+- M10 Debugger, Documenter & PR delivery: the run graph gains a **test → debug → document → PR**
+  tail (docs/02 §5). After the plan's steps commit, the **Tester** runs the suite in the sandbox;
+  on failure the **Debugger** (new role) diagnoses the output and appends a fix step that rides the
+  same approval-gated coder/commit path — a **bounded retry** that escalates to `needs_human`
+  rather than looping forever. Passing tests flow to the **Documenter** (new role) and then a
+  **durable human PR gate**: only past it does the native **GitHub PR flow** push the run branch
+  (token in-memory only, never logged) and open a pull request whose body carries the plan summary
+  and test evidence (`PrService` + `GitHubPrProvider`, SSRF-fixed to `api.github.com`). A **run
+  report** projects the event timeline into a structured summary (plan, commits, test verdict, PR,
+  outcome) at `GET /runs/{id}/report`. Adds the `agents.fix_generated` / `docs_generated` /
+  `pull_request_opened` / `run_reported` events, **agent-task** and **groundedness** eval suites
+  with the first committed success-rate baseline, and an offline exit-criterion test proving
+  **fix → tests → approval → PR** end to end.

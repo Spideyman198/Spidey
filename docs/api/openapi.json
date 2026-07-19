@@ -771,6 +771,29 @@
         "title": "RenameSessionRequest",
         "type": "object"
       },
+      "ReportStep": {
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "title",
+          "status"
+        ],
+        "title": "ReportStep",
+        "type": "object"
+      },
       "RepositorySource": {
         "enum": [
           "local",
@@ -844,6 +867,76 @@
           "diff"
         ],
         "title": "RunDiffResponse",
+        "type": "object"
+      },
+      "RunReport": {
+        "description": "The run's outcome at a glance \u2014 for the UI, a PR body, or an audit.",
+        "properties": {
+          "commits": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Commits",
+            "type": "array"
+          },
+          "event_count": {
+            "default": 0,
+            "title": "Event Count",
+            "type": "integer"
+          },
+          "goal": {
+            "title": "Goal",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "pull_request_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Request Url"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ReportStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "tests_passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tests Passed"
+          }
+        },
+        "required": [
+          "run_id",
+          "goal",
+          "status",
+          "outcome"
+        ],
+        "title": "RunReport",
         "type": "object"
       },
       "RunResponse": {
@@ -2159,6 +2252,54 @@
           }
         ],
         "summary": "Edit a run's plan before execution",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/runs/{run_id}/report": {
+      "get": {
+        "operationId": "get_report_api_v1_runs__run_id__report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Structured run report (plan, commits, tests, PR, outcome)",
         "tags": [
           "runs"
         ]
