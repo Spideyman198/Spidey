@@ -152,6 +152,10 @@ class FakeGitProvider:
     async def diff(self, path: str, *, base: str | None = None) -> str:
         return ""
 
+    async def push_branch(
+        self, path: str, *, branch: str, url: str, token: str | None
+    ) -> None: ...
+
 
 @dataclass
 class _AuditEvent:

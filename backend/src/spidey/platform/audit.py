@@ -44,6 +44,7 @@ class AuditAction(StrEnum):
     WORKSPACE_DELETED = "workspace.deleted"
     WORKSPACE_INGESTED = "workspace.ingested"
     WORKSPACE_INGEST_FAILED = "workspace.ingest_failed"
+    PULL_REQUEST_OPENED = "workspace.pull_request_opened"
 
 
 class AuditLogRecord(Base):

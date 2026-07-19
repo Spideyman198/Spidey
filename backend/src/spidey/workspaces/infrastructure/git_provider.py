@@ -156,3 +156,21 @@ class GitPythonProvider:
             return repo.git.diff(target, no_color=True)
         finally:
             repo.close()
+
+    async def push_branch(self, path: str, *, branch: str, url: str, token: str | None) -> None:
+        validate_clone_url(url, allowed_hosts=self._allowed_hosts)
+        await asyncio.to_thread(self._push_branch_sync, path, branch, url, token)
+
+    @staticmethod
+    def _push_branch_sync(path: str, branch: str, url: str, token: str | None) -> None:
+        repo = Repo(path)
+        auth_url = build_authenticated_url(url, token)
+        try:
+            # Push to the URL directly (never persist the tokened remote). The
+            # exception carries the tokened URL, so it is never logged or surfaced.
+            repo.git.push(auth_url, f"{branch}:{branch}", "--force-with-lease")
+        except GitCommandError:
+            _logger.warning("push_failed", host=urlsplit(url).hostname, branch=branch)
+            raise GitCloneError("branch could not be pushed") from None
+        finally:
+            repo.close()

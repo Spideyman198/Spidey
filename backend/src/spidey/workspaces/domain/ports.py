@@ -105,6 +105,38 @@ class GitProvider(Protocol):
         ``base`` (a ref/sha), defaulting to HEAD."""
         ...
 
+    async def push_branch(self, path: str, *, branch: str, url: str, token: str | None) -> None:
+        """Push ``branch`` to the remote (M10 PR delivery). The token is injected
+        into the push URL only in-memory and must never appear in an error or log.
+        SSRF/host validation is the caller's responsibility (the clone allow-list)."""
+        ...
+
+
+class PullRequest(BaseModel):
+    """The result of opening a pull request."""
+
+    model_config = ConfigDict(frozen=True)
+
+    number: int
+    url: str
+
+
+class PrProvider(Protocol):
+    """Opens a pull request on the hosting provider (GitHub) for the gated PR
+    flow (docs/05). Native by design: PR creation must pass our approval gate and
+    audit trail. The token authenticates the API call and is never logged."""
+
+    async def open_pull_request(
+        self,
+        *,
+        repo_url: str,
+        token: str | None,
+        head: str,
+        base: str,
+        title: str,
+        body: str,
+    ) -> PullRequest: ...
+
 
 class WorkspaceStorage(Protocol):
     """Owns the on-disk workspace area under the configured base directory.
