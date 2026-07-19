@@ -24,6 +24,11 @@ from spidey.evaluation.domain.retrieval import (
     recall_at_k,
     reciprocal_rank,
 )
+from spidey.evaluation.domain.safety import (
+    MemoryPoisonResult,
+    benign_acceptance_rate,
+    poison_containment_rate,
+)
 
 __all__ = [
     "AgentTaskResult",
@@ -31,15 +36,18 @@ __all__ = [
     "EvalReport",
     "EvalSuite",
     "GroundednessClaim",
+    "MemoryPoisonResult",
     "ReplayCase",
     "ReplayTimeline",
     "RetrievalCase",
     "SuiteOutcome",
     "SuiteResult",
     "Tier",
+    "benign_acceptance_rate",
     "diff_timeline",
     "groundedness_rate",
     "mean_cost_usd",
+    "poison_containment_rate",
     "precision_at_k",
     "recall_at_k",
     "reciprocal_rank",
