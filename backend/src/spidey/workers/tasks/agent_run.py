@@ -18,7 +18,7 @@ from celery import shared_task
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.types import Command
 
-from spidey.agents.application import ToolRegistry
+from spidey.agents.application import MemoryDistiller, ToolRegistry
 from spidey.agents.domain.runs import RunStatus, is_terminal
 from spidey.agents.graph import GraphNodes, build_run_graph, initial_state
 from spidey.agents.infrastructure import (
@@ -29,6 +29,8 @@ from spidey.agents.infrastructure import (
 from spidey.agents.infrastructure.run_store import PostgresRunStore
 from spidey.llm.application import Gateway
 from spidey.llm.infrastructure import PostgresInteractionCapture
+from spidey.memory.application import MemoryService
+from spidey.memory.infrastructure import PostgresMemoryStore
 from spidey.platform.audit import AuditLogger
 from spidey.platform.events import EventEnvelope, OutboxWriter, RunStatusChanged
 from spidey.platform.logging import get_logger
@@ -80,6 +82,11 @@ async def _run(run_id: uuid.UUID) -> None:
                 ],
                 events=events,
             )
+            memory_service = MemoryService(
+                store=PostgresMemoryStore(session),
+                vectors=container.memory_vector_index,
+                embedder=container.dense_embedder,
+            )
             nodes = GraphNodes(
                 gateway=gateway,
                 registry=registry,
@@ -96,6 +103,7 @@ async def _run(run_id: uuid.UUID) -> None:
                     cipher=container.cipher,
                     audit=AuditLogger(session),
                 ),
+                memory=memory_service,
             )
             config = {"configurable": {"thread_id": str(run_id)}}
             async with AsyncPostgresSaver.from_conn_string(
@@ -104,7 +112,7 @@ async def _run(run_id: uuid.UUID) -> None:
                 await saver.setup()  # idempotent: creates the checkpoint tables once
                 graph = build_run_graph(nodes, checkpointer=saver)
                 if run.status is RunStatus.PENDING:
-                    await graph.ainvoke(
+                    final = await graph.ainvoke(
                         initial_state(
                             run_id=str(run_id),
                             owner_id=str(run.owner_id),
@@ -115,7 +123,16 @@ async def _run(run_id: uuid.UUID) -> None:
                     )
                 else:
                     # Resumed after a human approved the plan (or an approval).
-                    await graph.ainvoke(Command(resume="approved"), config)
+                    final = await graph.ainvoke(Command(resume="approved"), config)
+            # End-of-run distillation: the only automatic memory writer (M11).
+            if final.get("status") == RunStatus.COMPLETED.value:
+                await MemoryDistiller(gateway=gateway, memory=memory_service).distill(
+                    run_id=run_id,
+                    owner_id=run.owner_id,
+                    workspace_id=run.workspace_id,
+                    goal=run.goal,
+                    transcript=[str(t) for t in final.get("transcript", [])],
+                )
             await session.commit()
     except Exception as exc:
         # Record the failure so the run never sticks in RUNNING, then re-raise so

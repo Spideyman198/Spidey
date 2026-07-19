@@ -31,6 +31,7 @@ from spidey.agents.domain.tools import SideEffect, ToolContext
 from spidey.agents.graph.state import RunState
 from spidey.identity.domain.models import Role as IdentityRole
 from spidey.llm.domain import ChatMessage, ChatRequest, Role, ToolSchema
+from spidey.memory.domain import MemoryKind, MemoryScope, frame_memories
 from spidey.platform.events import (
     ApprovalRequested,
     CodeGenerated,
@@ -51,8 +52,14 @@ if TYPE_CHECKING:
     from spidey.agents.application.registry import ToolRegistry
     from spidey.agents.domain.ports import RunStore
     from spidey.llm.application import Gateway
+    from spidey.memory.application import MemoryService
+    from spidey.memory.domain import RecalledMemory
     from spidey.platform.events import EventPayload, EventPublisher
     from spidey.workspaces.application import GitWorkflowService, PrService
+
+# Kinds a run recalls to inform its plan (semantic is cross-repo; the others are
+# admitted only within the run's workspace by the recall scope filter).
+_RECALL_KINDS = [MemoryKind.REPOSITORY, MemoryKind.PROCEDURAL, MemoryKind.SEMANTIC]
 
 _VIEWER = IdentityRole.VIEWER
 _DEVELOPER = IdentityRole.DEVELOPER  # run creation requires >= developer (API)
@@ -106,6 +113,7 @@ class GraphNodes:
         events: EventPublisher,
         git: GitWorkflowService | None = None,
         pr: PrService | None = None,
+        memory: MemoryService | None = None,
     ) -> None:
         self._gateway = gateway
         self._registry = registry
@@ -113,6 +121,7 @@ class GraphNodes:
         self._events = events
         self._git = git
         self._pr = pr
+        self._memory = memory
 
     # ── plan & approve (M7) ───────────────────────────────────────────────────
     async def plan(self, state: RunState) -> dict[str, object]:
@@ -121,12 +130,18 @@ class GraphNodes:
         interrupted node from the top on resume, so no side effect precedes it)."""
         run_id = uuid.UUID(state["run_id"])
         await self._set_status(run_id, RunStatus.PLANNING, state)
+        # Recall attributed memory to inform the plan (the cross-session benefit).
+        # Framed as untrusted data, never instructions (docs/07 sections 3-4).
+        recalled = await self._recall(state)
+        goal_message = state["goal"]
+        if recalled:
+            goal_message = f"{frame_memories(recalled)}\n\nGoal: {state['goal']}"
         response = await self._gateway.complete(
             role=Role.PLANNER,
             request=ChatRequest(
                 messages=[
                     ChatMessage.system(_PLAN_SYSTEM),
-                    ChatMessage.user(state["goal"]),
+                    ChatMessage.user(goal_message),
                 ],
                 max_tokens=512,
             ),
@@ -583,6 +598,19 @@ class GraphNodes:
         return "finalize"
 
     # ── helpers ──────────────────────────────────────────────────────────────
+    async def _recall(self, state: RunState) -> list[RecalledMemory]:
+        """Scope-filtered memory recall for the run's goal; empty when memory is
+        not configured (offline / no workspace) so it never changes the flow."""
+        if self._memory is None:
+            return []
+        scope = MemoryScope(
+            workspace_id=_opt_uuid(state.get("workspace_id")),
+            user_id=uuid.UUID(state["owner_id"]),
+        )
+        return await self._memory.recall(
+            query=state["goal"], kinds=_RECALL_KINDS, scope=scope, limit=5
+        )
+
     async def _propose(
         self,
         tool: str,

@@ -36,6 +36,7 @@ from spidey.llm.infrastructure import (
     RedisBudgetLedger,
     RedisResponseCache,
 )
+from spidey.memory.infrastructure import QdrantMemoryIndex
 from spidey.platform.db import create_session_factory
 from spidey.platform.events import StreamBus
 from spidey.platform.security import SecretCipher
@@ -163,6 +164,7 @@ class Container:
     response_cache: ResponseCache
     budget_ledger: BudgetLedger
     sandbox: Sandbox
+    memory_vector_index: QdrantMemoryIndex
 
 
 def build_container(settings: Settings) -> Container:
@@ -225,6 +227,9 @@ def build_container(settings: Settings) -> Container:
             image=settings.sandbox_image,
             run_uid=settings.sandbox_run_uid,
             egress_proxy_network=settings.sandbox_egress_network,
+        ),
+        memory_vector_index=QdrantMemoryIndex(
+            client=qdrant_client, dense_dim=settings.embedding_dim
         ),
     )
 

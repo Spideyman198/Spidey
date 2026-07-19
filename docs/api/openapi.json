@@ -620,6 +620,57 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MemoryKind": {
+        "description": "The five typed kinds (docs/07 \u00a71). Only ``SEMANTIC`` crosses repositories.",
+        "enum": [
+          "repository",
+          "semantic",
+          "procedural",
+          "episodic",
+          "evaluation"
+        ],
+        "title": "MemoryKind",
+        "type": "string"
+      },
+      "MemoryResponse": {
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MemoryKind"
+          },
+          "use_count": {
+            "title": "Use Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "content",
+          "confidence",
+          "use_count",
+          "created_at"
+        ],
+        "title": "MemoryResponse",
+        "type": "object"
+      },
       "MessageAuthor": {
         "enum": [
           "user",
@@ -754,6 +805,25 @@
           "refresh_token"
         ],
         "title": "RefreshRequest",
+        "type": "object"
+      },
+      "RememberRequest": {
+        "properties": {
+          "content": {
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Content",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MemoryKind",
+            "default": "semantic"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "RememberRequest",
         "type": "object"
       },
       "RenameSessionRequest": {
@@ -1716,6 +1786,121 @@
         "summary": "Readiness probe",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/memories": {
+      "get": {
+        "operationId": "list_memories_api_v1_memories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemoryResponse"
+                  },
+                  "title": "Response List Memories Api V1 Memories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List my long-term memories",
+        "tags": [
+          "memory"
+        ]
+      },
+      "post": {
+        "operationId": "remember_api_v1_memories_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RememberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Teach a fact ('remember this') \u2014 still screened by the write gate",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/v1/memories/{memory_id}": {
+      "delete": {
+        "operationId": "delete_memory_api_v1_memories__memory_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete a memory (removes record and vector)",
+        "tags": [
+          "memory"
         ]
       }
     },

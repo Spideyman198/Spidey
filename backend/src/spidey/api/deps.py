@@ -24,8 +24,8 @@ from spidey.identity.infrastructure import (
     PostgresUserRepository,
 )
 from spidey.identity.infrastructure.security_sink import IndependentSecurityEventSink
-from spidey.memory.application import ConversationService
-from spidey.memory.infrastructure import PostgresConversationStore
+from spidey.memory.application import ConversationService, MemoryService
+from spidey.memory.infrastructure import PostgresConversationStore, PostgresMemoryStore
 from spidey.platform.audit import AuditAction, AuditLogger, IndependentAuditLogger
 from spidey.platform.errors import ForbiddenError, UnauthorizedError
 from spidey.platform.events import OutboxWriter
@@ -92,6 +92,14 @@ def get_conversation_service(session: SessionDep) -> ConversationService:
     )
 
 
+def get_memory_service(container: ContainerDep, session: SessionDep) -> MemoryService:
+    return MemoryService(
+        store=PostgresMemoryStore(session),
+        vectors=container.memory_vector_index,
+        embedder=container.dense_embedder,
+    )
+
+
 def get_workspace_service(container: ContainerDep, session: SessionDep) -> WorkspaceService:
     return WorkspaceService(
         store=PostgresWorkspaceStore(session),
@@ -139,6 +147,7 @@ def get_run_service(container: ContainerDep, session: SessionDep) -> RunService:
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 ConversationServiceDep = Annotated[ConversationService, Depends(get_conversation_service)]
+MemoryServiceDep = Annotated[MemoryService, Depends(get_memory_service)]
 WorkspaceServiceDep = Annotated[WorkspaceService, Depends(get_workspace_service)]
 SymbolStoreDep = Annotated[PostgresSymbolStore, Depends(get_symbol_store)]
 SearchServiceDep = Annotated[SearchService, Depends(get_search_service)]
