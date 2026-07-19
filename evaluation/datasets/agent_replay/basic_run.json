@@ -15,8 +15,10 @@
       "agents.plan_created",
       "agents.run_status_changed",
       "agents.run_status_changed",
+      "agents.docs_generated",
       "agents.run_status_changed",
-      "chat.run_completed"
+      "chat.run_completed",
+      "agents.run_reported"
     ]
   }
 }

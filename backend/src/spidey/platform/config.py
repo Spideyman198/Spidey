@@ -66,6 +66,10 @@ def _default_routes() -> dict[str, RouteSetting]:
         "planner": RouteSetting(provider="anthropic", model=frontier),
         "coder": RouteSetting(provider="anthropic", model=frontier),
         "reviewer": RouteSetting(provider="anthropic", model=frontier),
+        "debugger": RouteSetting(provider="anthropic", model=frontier),
+        "documenter": RouteSetting(
+            provider="anthropic", model="claude-haiku-4-5-20251001", fallbacks=[cheap]
+        ),
         "summarizer": RouteSetting(
             provider="anthropic", model="claude-haiku-4-5-20251001", fallbacks=[cheap]
         ),

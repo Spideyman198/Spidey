@@ -57,7 +57,13 @@ class _FixtureGateway:
     ) -> ChatResponse:
         if role is Role.PLANNER:
             text = self._plan
-        else:
+        elif role is Role.REVIEWER:
+            text = "APPROVE"
+        elif role is Role.DEBUGGER:
+            text = "The failure is in the changed function; correct its return value."
+        elif role is Role.DOCUMENTER:
+            text = "Implements the requested change with tests."
+        else:  # CODER — one scripted note per step
             text = self._notes[self._index]
             self._index += 1
         return ChatResponse(

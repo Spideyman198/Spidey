@@ -29,10 +29,12 @@ from spidey.agents.infrastructure import (
 from spidey.agents.infrastructure.run_store import PostgresRunStore
 from spidey.llm.application import Gateway
 from spidey.llm.infrastructure import PostgresInteractionCapture
+from spidey.platform.audit import AuditLogger
 from spidey.platform.events import EventEnvelope, OutboxWriter, RunStatusChanged
 from spidey.platform.logging import get_logger
 from spidey.workers.container import get_worker_container
-from spidey.workspaces.application import GitWorkflowService
+from spidey.workspaces.application import GitWorkflowService, PrService
+from spidey.workspaces.infrastructure import PostgresWorkspaceStore
 
 _logger = get_logger("spidey.workers.agent_run")
 
@@ -85,6 +87,14 @@ async def _run(run_id: uuid.UUID) -> None:
                 events=events,
                 git=GitWorkflowService(
                     git=container.git_provider, storage=container.workspace_storage
+                ),
+                pr=PrService(
+                    store=PostgresWorkspaceStore(session),
+                    storage=container.workspace_storage,
+                    git=container.git_provider,
+                    pr_provider=container.pr_provider,
+                    cipher=container.cipher,
+                    audit=AuditLogger(session),
                 ),
             )
             config = {"configurable": {"thread_id": str(run_id)}}

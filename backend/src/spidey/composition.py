@@ -40,7 +40,11 @@ from spidey.platform.db import create_session_factory
 from spidey.platform.events import StreamBus
 from spidey.platform.security import SecretCipher
 from spidey.platform.tasks import CeleryTaskQueue
-from spidey.workspaces.infrastructure import GitPythonProvider, LocalWorkspaceStorage
+from spidey.workspaces.infrastructure import (
+    GitHubPrProvider,
+    GitPythonProvider,
+    LocalWorkspaceStorage,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -62,7 +66,7 @@ if TYPE_CHECKING:
     from spidey.llm.domain.ports import BudgetLedger, ResponseCache
     from spidey.platform.config import RouteSetting, Settings
     from spidey.platform.tasks import TaskQueue
-    from spidey.workspaces.domain.ports import GitProvider, WorkspaceStorage
+    from spidey.workspaces.domain.ports import GitProvider, PrProvider, WorkspaceStorage
 
 
 def build_provider_registry(settings: Settings) -> ProviderRegistry:
@@ -147,6 +151,7 @@ class Container:
     cipher: SecretCipher
     workspace_storage: WorkspaceStorage
     git_provider: GitProvider
+    pr_provider: PrProvider
     task_queue: TaskQueue
     code_parser: Parser
     dense_embedder: DenseEmbedder
@@ -178,12 +183,13 @@ def build_container(settings: Settings) -> Container:
         model_name=settings.sparse_embedding_model,
         cache_dir=cache_dir,
     )
+    http_client = create_http_client()
     return Container(
         settings=settings,
         engine=engine,
         session_factory=create_session_factory(engine),
         redis=redis,
-        http_client=create_http_client(),
+        http_client=http_client,
         qdrant_endpoint=settings.qdrant_endpoint,
         hasher=Argon2PasswordHasher(),
         token_issuer=JwtTokenIssuer(
@@ -195,6 +201,7 @@ def build_container(settings: Settings) -> Container:
         cipher=SecretCipher(settings.encryption_master_key.get_secret_value()),
         workspace_storage=LocalWorkspaceStorage(settings),
         git_provider=GitPythonProvider(settings),
+        pr_provider=GitHubPrProvider(http_client),
         task_queue=CeleryTaskQueue(settings),
         code_parser=TreeSitterParser(),
         dense_embedder=dense_embedder,

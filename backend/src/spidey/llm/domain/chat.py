@@ -19,6 +19,8 @@ class Role(StrEnum):
     PLANNER = "planner"
     CODER = "coder"
     REVIEWER = "reviewer"
+    DEBUGGER = "debugger"
+    DOCUMENTER = "documenter"
     SUMMARIZER = "summarizer"
     CHAT = "chat"
 

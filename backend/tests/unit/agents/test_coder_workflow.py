@@ -103,6 +103,10 @@ class ScriptedGateway:
             return _text(self._plan)
         if role is Role.REVIEWER:
             return _text(self._reviewer.pop(0))
+        if role is Role.DEBUGGER:
+            return _text("fix the failing assertion")
+        if role is Role.DOCUMENTER:
+            return _text("Summary of the change for the PR.")
         self.coder_prompts.append(request.messages[-1].content)
         return self._coder.pop(0)
 

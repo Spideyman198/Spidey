@@ -30,6 +30,13 @@ def build_run_graph(nodes: GraphNodes, *, checkpointer: Any) -> Any:
     graph.add_node("reviewer", nodes.reviewer)
     graph.add_node("commit", nodes.commit)
     graph.add_node("budget_gate", nodes.budget_gate)
+    # M10 tail: test → (debug loop | document) → PR gate → open PR → finalize.
+    graph.add_node("test", nodes.test)
+    graph.add_node("debug", nodes.debug)
+    graph.add_node("document", nodes.document)
+    graph.add_node("pr_gate", nodes.pr_gate)
+    graph.add_node("open_pr", nodes.open_pr)
+    graph.add_node("escalate", nodes.escalate)
     graph.add_node("finalize", nodes.finalize)
 
     graph.add_edge(START, "plan")
@@ -51,8 +58,22 @@ def build_run_graph(nodes: GraphNodes, *, checkpointer: Any) -> Any:
     graph.add_conditional_edges(
         "commit",
         nodes.route_after_commit,
-        {"coder": "coder", "budget_gate": "budget_gate", "finalize": "finalize"},
+        {"coder": "coder", "budget_gate": "budget_gate", "test": "test"},
     )
     graph.add_edge("budget_gate", "coder")  # a granted window resumes execution
+    graph.add_conditional_edges(
+        "test",
+        nodes.route_after_test,
+        {"debug": "debug", "document": "document", "escalate": "escalate"},
+    )
+    graph.add_edge("debug", "coder")  # the fix step rides the coder/commit path
+    graph.add_conditional_edges(
+        "document",
+        nodes.route_after_document,
+        {"pr_gate": "pr_gate", "finalize": "finalize"},
+    )
+    graph.add_edge("pr_gate", "open_pr")  # resume ⇒ PR approved
+    graph.add_edge("open_pr", "finalize")
+    graph.add_edge("escalate", END)
     graph.add_edge("finalize", END)
     return graph.compile(checkpointer=checkpointer)

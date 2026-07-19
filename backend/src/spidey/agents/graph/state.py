@@ -33,6 +33,17 @@ class RunState(TypedDict):
     # Run-branch git anchors ("" / None when the run has no workspace).
     branch: str
     base_commit: str | None
+    # ── test / debug / document / PR (M10) ───────────────────────────────────
+    # Serialized TestReport from the last test run ("" when tests never ran).
+    test_report: str
+    # True/False after a test run; None when no framework was detected / no tests.
+    tests_passed: bool | None
+    # 0-based count of debug attempts spent on the current failure (bounded).
+    debug_round: int
+    # Documenter's change summary (goes into the run report + PR body).
+    docs: str
+    # Opened pull-request URL ("" when none was delivered).
+    pr_url: str
 
 
 def initial_state(*, run_id: str, owner_id: str, workspace_id: str | None, goal: str) -> RunState:
@@ -52,4 +63,9 @@ def initial_state(*, run_id: str, owner_id: str, workspace_id: str | None, goal:
         review_round=0,
         branch="",
         base_commit=None,
+        test_report="",
+        tests_passed=None,
+        debug_round=0,
+        docs="",
+        pr_url="",
     )

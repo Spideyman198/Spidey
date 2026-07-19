@@ -22,6 +22,7 @@ from fastapi import APIRouter, Header, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from spidey.agents.application import RunReport, build_run_report
 from spidey.agents.domain.runs import (
     Approval,
     Plan,
@@ -276,6 +277,23 @@ async def get_timeline(
         )
         for e in events
     ]
+
+
+@router.get(
+    "/{run_id}/report",
+    response_model=RunReport,
+    summary="Structured run report (plan, commits, tests, PR, outcome)",
+)
+async def get_report(
+    run_id: uuid.UUID,
+    service: RunServiceDep,
+    session: SessionDep,
+    user: CurrentUser,
+) -> RunReport:
+    run = await service.get(owner_id=user.id, run_id=run_id)  # owner-scoped
+    plan = await service.get_plan(owner_id=user.id, run_id=run_id)
+    events = await RunEventReader(session).timeline(run_id)
+    return build_run_report(run, plan, events)
 
 
 # ── diff (M8): what the run changed on its isolated branch ──────────────────

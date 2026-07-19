@@ -165,12 +165,45 @@ class CommandExecuted(EventPayload):
 
 
 class TestsCompleted(EventPayload):
+    __test__ = False  # not a pytest test class despite the ``Test`` prefix
+
     event_type: ClassVar[str] = "execution.tests_completed"
 
     framework: str
     passed: bool
     passed_count: int | None = None
     failed_count: int | None = None
+
+
+# ── debugger / documenter / PR delivery (M10) ─────────────────────────────────
+class FixGenerated(EventPayload):
+    event_type: ClassVar[str] = "agents.fix_generated"
+
+    attempt: int  # 1-based debug attempt within the run
+    files: list[str]  # workspace-relative paths the fix proposes to edit
+
+
+class DocsGenerated(EventPayload):
+    event_type: ClassVar[str] = "agents.docs_generated"
+
+    summary_chars: int  # size only — the content lives in the run report
+
+
+class PullRequestOpened(EventPayload):
+    event_type: ClassVar[str] = "agents.pull_request_opened"
+
+    number: int
+    url: str
+    branch: str
+
+
+class RunReported(EventPayload):
+    event_type: ClassVar[str] = "agents.run_reported"
+
+    outcome: str  # completed | needs_human | failed
+    steps: int
+    tests_passed: bool | None = None
+    pull_request_url: str | None = None
 
 
 # Registry: event_type → payload model, for re-validation on read (replay/SSE).
@@ -193,6 +226,10 @@ EVENT_TYPES: dict[str, type[EventPayload]] = {
         CommitBlocked,
         CommandExecuted,
         TestsCompleted,
+        FixGenerated,
+        DocsGenerated,
+        PullRequestOpened,
+        RunReported,
     )
 }
 
