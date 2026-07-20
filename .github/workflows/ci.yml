@@ -22,8 +22,8 @@ jobs:
     defaults:
       run: { working-directory: backend }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - run: uv run ruff check .
@@ -36,8 +36,8 @@ jobs:
     defaults:
       run: { working-directory: backend }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - run: uv run pyright
@@ -77,12 +77,12 @@ jobs:
       # Bake embedding models into a cached dir so retrieval tests never re-download.
       SPIDEY_FASTEMBED_CACHE_PATH: ${{ github.workspace }}/.fastembed-cache
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       # Local fastembed models (dense + BM25) are ~150 MB; cache across runs.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.fastembed-cache
           key: fastembed-bge-small-en-v1.5-bm25-v1
@@ -94,7 +94,7 @@ jobs:
           done
           echo "qdrant did not become ready" >&2; exit 1
       - run: uv run pytest --cov=spidey --cov-report=xml --cov-report=term --cov-fail-under=85
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: backend/coverage.xml
@@ -103,9 +103,9 @@ jobs:
     name: Docker image build
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/Dockerfile.backend
