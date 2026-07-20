@@ -156,3 +156,13 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   a **memory-poisoning safety suite**: a corpus of imperatives, injections, secrets, and cross-scope
   leaks is fully contained by the gate (containment baseline 1.0). Cross-session benefit, deletion,
   and poison-containment are each proven offline.
+- M12 web UI & live agent dashboard: a **React + TypeScript SPA** (Vite, strict TS) that drives every
+  M7–M11 flow — auth, a runs list with one-click run creation, a **run view** (plan board, live
+  event timeline over SSE, approval inbox, unified diff viewer), a **live dashboard** (active runs
+  with tokens/cost/tool-call/test tiles), a **replay** view, and a **memory manager** (inspect,
+  teach, delete). The live dashboard and the replay timeline are **both projections of one pure SSE
+  event reducer** (unit-tested), so "what happened" is identical live or replayed. SSE is consumed
+  via a fetch stream so the JWT rides the `Authorization` header, never the URL; agent output is
+  rendered as **text/code only** (never HTML). Ships a strict **CSP** (no `unsafe-inline`), a
+  frontend CI job (typecheck · ESLint · Vitest · build · dependency audit), and a Playwright e2e
+  scaffold (runs against the fixture-LLM stack in CI). Backend and frontend gates are both green.

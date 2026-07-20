@@ -12,8 +12,8 @@ destructive action.**
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with pyright](https://img.shields.io/badge/pyright-strict-blue.svg)](https://microsoft.github.io/pyright/)
 
-> **Status:** M11 of 15 milestones complete. See the [roadmap](docs/04-milestones.md) and the
-> [changelog](CHANGELOG.md).
+> **Status:** M12 of 15 milestones complete — the platform now has a **web UI**. See the
+> [roadmap](docs/04-milestones.md) and the [changelog](CHANGELOG.md).
 
 ## Why Spidey?
 
@@ -42,6 +42,7 @@ actions are reversible by default, so the system is safe to point at real, untru
 - ✓ **Event-driven & replayable** — transactional outbox → Redis Streams → SSE; deterministic replay
 - ✓ **MCP tool plane** — serves and mounts Model Context Protocol tools with trust tiers and pinning
 - ✓ **Provider-portable** — Anthropic, OpenAI, Gemini, Azure, Ollama, vLLM, routed per role by config
+- ✓ **Web UI** — React/TS SPA: streaming chat, plan board, diff viewer, approval inbox, live dashboard, replay
 - ✓ **Hexagonal architecture** — ports & adapters with import-linter-enforced context boundaries
 
 ## Features
