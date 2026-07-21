@@ -179,3 +179,18 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   v2 features are negligible against the NFR-2 search budget. Reports: the
   [ablation/adopt decision](docs/perf/m13-retrieval-v2-eval.md) and the
   [performance & NFR-2 verification](docs/perf/m13-retrieval-perf.md).
+- M14 Kubernetes/Helm & ops readiness: a **Kubernetes Jobs sandbox adapter** behind the existing
+  `Sandbox` port (ADR-0014) — untrusted code runs as one hardened Job in a PSS-`restricted`,
+  deny-all, **tokenless**, non-retrying (`backoffLimit 0`), deadline-bounded namespace, with the
+  workspace mounted as a PVC subPath and paths outside the root rejected — **no Docker socket, no
+  DinD, ever**. The manifest builder is pure and unit-tested; a mismatched/broken API degrades to
+  "sandbox unavailable", never a crash. A **Helm chart** (`deploy/helm/spidey`) deploys the API
+  (HPA), per-queue workers (**KEDA** on Redis queue depth), the beat scheduler, an Alembic
+  **pre-upgrade migration hook**, SSE-aware ingress + cert-manager, **deny-by-default
+  NetworkPolicies**, the locked-down exec namespace + least-privilege RBAC, and External-Secrets /
+  SOPS wiring (no plaintext secrets). A **Conftest policy** fails the build on any privileged, root,
+  writable-rootfs, or unpinned-image container. Ships five ops **runbooks** (deploy, backup/restore,
+  key rotation, incident response, cost kill-switch), Grafana **dashboards** (cost, agent-ops,
+  sandbox-security) + Prometheus **alert rules**, and a **load-test** harness
+  (`scripts/loadtest.py`). Validated locally with helm 3.16 (lint + template) and conftest 0.56
+  (252 checks); the kind install + `helm test` smoke is a dispatchable CI job.

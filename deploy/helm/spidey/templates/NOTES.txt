@@ -1,0 +1,31 @@
+Spidey {{ .Chart.AppVersion }} installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Components:
+  - API Deployment      {{ include "spidey.fullname" . }}-api ({{ if .Values.api.autoscaling.enabled }}HPA {{ .Values.api.autoscaling.minReplicas }}-{{ .Values.api.autoscaling.maxReplicas }}{{ else }}{{ .Values.api.replicas }} replicas{{ end }})
+  - Workers             {{- range .Values.worker.queues }} {{ .name }}{{- end }}  ({{ if .Values.keda.enabled }}KEDA on queue depth{{ else }}static replicas — enable keda.enabled for autoscaling{{ end }})
+  - Beat scheduler      {{ include "spidey.fullname" . }}-beat (1 replica)
+  - Migrations          ran as a pre-upgrade Job (Alembic) before the app pods
+  - Sandbox namespace   {{ if .Values.sandbox.enabled }}{{ .Values.sandbox.namespace }} (PSS restricted, deny-all NetworkPolicy){{ else }}disabled{{ end }}
+
+Secrets:
+{{- if .Values.externalSecrets.enabled }}
+  Synced by the External Secrets Operator from "{{ .Values.externalSecrets.remoteKey }}".
+{{- else if .Values.devDatabases.enabled }}
+  DEV placeholders in Secret "{{ include "spidey.secretName" . }}" — do NOT use in production.
+{{- else }}
+  Provide a Secret named "{{ include "spidey.secretName" . }}" with keys:
+{{- range .Values.secrets.keys }}
+    - {{ . }}
+{{- end }}
+{{- end }}
+
+Reach the API:
+{{- if .Values.ingress.enabled }}
+  https://{{ .Values.ingress.host }}/api/v1/health/ready
+{{- else }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "spidey.fullname" . }}-api {{ .Values.api.port }}:{{ .Values.api.port }}
+  curl http://localhost:{{ .Values.api.port }}/api/v1/health/ready
+{{- end }}
+
+Verify the install:
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

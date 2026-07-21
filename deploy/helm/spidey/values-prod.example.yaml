@@ -1,0 +1,75 @@
+# Example production overrides. Copy, adjust, and apply with:
+#   helm upgrade --install spidey deploy/helm/spidey -f values-prod.example.yaml
+#
+# Databases are MANAGED services here (RDS / ElastiCache / managed Qdrant) — the
+# chart does not run stateful workloads in production (docs/12 §2). Secrets come
+# from the External Secrets Operator; nothing sensitive is in this file.
+
+image:
+  repository: ghcr.io/spideyman198/spidey
+  tag: "0.14.0" # pin by immutable tag or digest in prod
+  pullPolicy: IfNotPresent
+
+config:
+  SPIDEY_ENVIRONMENT: production
+  SPIDEY_LOG_LEVEL: INFO
+  SPIDEY_DATABASE_URL: postgresql+asyncpg://spidey@prod-postgres.internal:5432/spidey
+  SPIDEY_REDIS_URL: redis://prod-redis.internal:6379/0
+  SPIDEY_QDRANT_URL: http://prod-qdrant.internal:6333
+  SPIDEY_SANDBOX_BACKEND: k8s
+  SPIDEY_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability:4318
+
+externalSecrets:
+  enabled: true
+  secretStore:
+    name: spidey-secret-store
+    kind: ClusterSecretStore
+  remoteKey: spidey/prod
+
+workspaces:
+  persistence:
+    accessMode: ReadWriteMany # a shared filesystem (EFS / Filestore) is required
+    size: 100Gi
+    storageClassName: efs-sc
+
+api:
+  replicas: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+
+worker:
+  queues:
+    - name: ingestion
+      replicas: 2
+      keda: { minReplicaCount: 2, maxReplicaCount: 20, listLength: 5 }
+    - name: maintenance
+      replicas: 1
+      keda: { minReplicaCount: 1, maxReplicaCount: 4, listLength: 50 }
+
+keda:
+  enabled: true
+  redisAddress: prod-redis.internal:6379
+
+metrics:
+  serviceMonitor:
+    enabled: true
+
+ingress:
+  enabled: true
+  className: nginx
+  host: spidey.example.com
+  tls:
+    enabled: true
+    secretName: spidey-tls
+
+networkPolicies:
+  enabled: true
+  egressAllowedCidrs:
+    # Tighten to your LLM provider + GitHub ranges. 0.0.0.0/0 is NOT acceptable
+    # in production.
+    - 140.82.112.0/20 # github.example range (illustrative)
+
+devDatabases:
+  enabled: false

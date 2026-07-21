@@ -1,0 +1,59 @@
+{{- if .Values.devDatabases.enabled }}
+# Self-contained, single-replica datastores for a kind smoke test ONLY. Not for
+# production — point config.SPIDEY_*_URL at managed services instead. Labeled
+# spidey.dev/datastore so the app egress NetworkPolicy admits them.
+{{- $ds := dict "postgres" (dict "port" 5432 "image" .Values.devDatabases.postgres.image)
+    "redis" (dict "port" 6379 "image" .Values.devDatabases.redis.image)
+    "qdrant" (dict "port" 6333 "image" .Values.devDatabases.qdrant.image) }}
+{{- range $name, $spec := $ds }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spidey-{{ $name }}
+  labels:
+    {{- include "spidey.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+    spidey.dev/datastore: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "spidey.name" $ }}
+      app.kubernetes.io/component: {{ $name }}
+  template:
+    metadata:
+      labels:
+        {{- include "spidey.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+        spidey.dev/datastore: "true"
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ $spec.image }}
+          {{- if eq $name "postgres" }}
+          env:
+            - { name: POSTGRES_USER, value: spidey }
+            - { name: POSTGRES_PASSWORD, value: {{ $.Values.devDatabases.postgres.password | quote }} }
+            - { name: POSTGRES_DB, value: spidey }
+          {{- end }}
+          ports:
+            - containerPort: {{ $spec.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spidey-{{ $name }}
+  labels:
+    {{- include "spidey.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+    spidey.dev/datastore: "true"
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "spidey.name" $ }}
+    app.kubernetes.io/component: {{ $name }}
+  ports:
+    - port: {{ $spec.port }}
+      targetPort: {{ $spec.port }}
+---
+{{- end }}
+{{- end }}

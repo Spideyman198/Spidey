@@ -1,0 +1,57 @@
+# Seed alert rules (docs/09 §6). Loaded by prometheus.yml via rule_files.
+# Expressions use the metrics the app actually emits (spidey_* families).
+groups:
+  - name: spidey-platform
+    rules:
+      - alert: ApiLatencyP95High
+        expr: >
+          histogram_quantile(0.95,
+            sum by (le, route) (rate(spidey_http_request_duration_seconds_bucket[5m]))) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API p95 latency > 2s (route {{ $labels.route }})"
+          description: "NFR-2 budget breached for 10m; check DB/Redis health and worker backlog."
+
+      - alert: ApiErrorRateHigh
+        expr: >
+          sum(rate(spidey_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(spidey_http_requests_total[5m])), 1) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 5xx rate above 5% for 10m"
+          description: "Correlate with recent deploys; roll back per docs/runbooks/deploy.md."
+
+  - name: spidey-agents
+    rules:
+      - alert: SandboxPolicyViolation
+        expr: increase(spidey_tool_invocations_total{outcome="denied"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "A tool/sandbox policy denial occurred"
+          description: "A command or tool was refused by policy. Investigate per docs/runbooks/incident-response.md."
+
+      - alert: McpToolDefinitionDrift
+        expr: increase(spidey_mcp_drift_alarms_total[15m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "An MCP tool definition changed under a pin"
+          description: "A mounted MCP server's tool definition drifted from its pinned hash."
+
+  - name: spidey-cost
+    rules:
+      - alert: LlmCostPerHourAnomaly
+        expr: sum(rate(spidey_llm_cost_usd_total[1h])) * 3600 > 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM spend > $20/hour, sustained 15m"
+          description: "Possible runaway. Trip the kill switch per docs/runbooks/cost-runaway-killswitch.md."

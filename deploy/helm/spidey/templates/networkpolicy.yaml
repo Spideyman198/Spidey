@@ -1,0 +1,96 @@
+{{- if .Values.networkPolicies.enabled }}
+# Deny-by-default for every app pod in the release namespace; the policies below
+# re-open only the required paths (docs/12 §2).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "spidey.fullname" . }}-default-deny
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: spidey
+  policyTypes: ["Ingress", "Egress"]
+---
+# DNS resolution (egress to kube-dns) for all app pods.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "spidey.fullname" . }}-allow-dns
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: spidey
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicies.dnsNamespace }}
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Ingress to the API on its HTTP port (from the ingress controller / cluster).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "spidey.fullname" . }}-allow-api-ingress
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "spidey.selectorLabels" (dict "root" $ "component" "api") | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - ports:
+        - { protocol: TCP, port: {{ .Values.api.port }} }
+---
+# App pods may reach the in-cluster datastores (Postgres/Redis/Qdrant).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "spidey.fullname" . }}-allow-datastores
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: spidey
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              spidey.dev/datastore: "true"
+      ports:
+        - { protocol: TCP, port: 5432 }
+        - { protocol: TCP, port: 6379 }
+        - { protocol: TCP, port: 6333 }
+---
+# Worker egress to the allow-listed internet (LLM providers + GitHub). Tighten
+# the CIDRs to provider ranges in production.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "spidey.fullname" . }}-allow-worker-egress
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "spidey.selectorLabels" (dict "root" $ "component" "worker") | nindent 6 }}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        {{- range .Values.networkPolicies.egressAllowedCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{- end }}

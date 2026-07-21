@@ -1,0 +1,17 @@
+{{- if and .Values.workspaces.persistence.enabled (not .Values.workspaces.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.config.SPIDEY_SANDBOX_K8S_WORKSPACE_PVC | default "spidey-workspaces" }}
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.workspaces.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.workspaces.persistence.size }}
+  {{- with .Values.workspaces.persistence.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

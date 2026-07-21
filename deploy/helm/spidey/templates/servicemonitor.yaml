@@ -1,0 +1,18 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+# Prometheus Operator scrape config for the API's /metrics. Requires the
+# monitoring.coreos.com CRDs in-cluster.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "spidey.fullname" . }}
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "spidey.selectorLabels" (dict "root" $ "component" "api") | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+{{- end }}

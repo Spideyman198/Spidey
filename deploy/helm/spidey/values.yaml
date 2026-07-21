@@ -1,0 +1,176 @@
+# Default values for the spidey chart. Overridden per environment; see
+# values-prod.example.yaml for a production shape and docs/12 for the design.
+
+# One image, many roles (12-factor): api, worker, and beat run the same image.
+image:
+  repository: ghcr.io/spideyman198/spidey
+  tag: "" # defaults to Chart.appVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Non-secret configuration → ConfigMap → env. Point the *_URL values at managed
+# services in prod (we do not pretend running databases on K8s is free), or at
+# the in-cluster dev databases below for a kind smoke test.
+config:
+  SPIDEY_ENVIRONMENT: production
+  SPIDEY_LOG_LEVEL: INFO
+  SPIDEY_DATABASE_URL: postgresql+asyncpg://spidey:spidey@spidey-postgres:5432/spidey
+  SPIDEY_REDIS_URL: redis://spidey-redis:6379/0
+  SPIDEY_QDRANT_URL: http://spidey-qdrant:6333
+  SPIDEY_SANDBOX_BACKEND: k8s
+  SPIDEY_SANDBOX_K8S_NAMESPACE: spidey-exec
+  SPIDEY_SANDBOX_K8S_WORKSPACE_PVC: spidey-workspaces
+  SPIDEY_SANDBOX_K8S_WORKSPACE_ROOT: /var/lib/spidey/workspaces
+  SPIDEY_OTEL_EXPORTER_OTLP_ENDPOINT: ""
+
+# Secrets. Prefer the External Secrets Operator (syncs from a cloud secret
+# manager) or a SOPS-encrypted values file — never plaintext in a values file.
+# These keys are consumed as env by every app pod.
+secrets:
+  # When externalSecrets.enabled and sops.enabled are both false, the chart
+  # expects a pre-created Secret named "<fullname>-secrets" with these keys.
+  keys:
+    - SPIDEY_AUTH_SECRET_KEY
+    - SPIDEY_ENCRYPTION_MASTER_KEY
+    - SPIDEY_ANTHROPIC_API_KEY
+externalSecrets:
+  enabled: false
+  refreshInterval: 1h
+  secretStore:
+    name: spidey-secret-store
+    kind: ClusterSecretStore
+  # remoteKey in the backing store that holds the flattened secret keys.
+  remoteKey: spidey/prod
+
+# A shared RWX PVC for workspaces, mounted by the worker and the exec Jobs.
+workspaces:
+  persistence:
+    enabled: true
+    existingClaim: ""
+    accessMode: ReadWriteMany
+    size: 20Gi
+    storageClassName: ""
+  mountPath: /var/lib/spidey/workspaces
+
+# Restricted Pod Security Standards for every app pod.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop: ["ALL"]
+
+api:
+  replicas: 2
+  port: 8000
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: "1", memory: 512Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# One Deployment per Celery queue; queue depth (not CPU) is the load signal →
+# KEDA. Queue names mirror the code (spidey.workers.celery_app): "ingestion"
+# carries indexing and agent runs (the load-bearing work); "maintenance" carries
+# the beat-driven heartbeat/event-pump and chat.
+worker:
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { cpu: "2", memory: 2Gi }
+  queues:
+    # listLength = Redis list depth per replica before scaling out (Celery's
+    # Redis broker uses one list per queue).
+    - name: ingestion
+      replicas: 1
+      keda: { minReplicaCount: 1, maxReplicaCount: 10, listLength: 5 }
+    - name: maintenance
+      replicas: 1
+      keda: { minReplicaCount: 1, maxReplicaCount: 3, listLength: 50 }
+
+beat:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 250m, memory: 256Mi }
+
+# Alembic migrations run as a pre-install/pre-upgrade Job so app pods never race
+# schema changes.
+migrations:
+  enabled: true
+  backoffLimit: 1
+
+# The locked-down namespace + RBAC for the Kubernetes Jobs sandbox adapter.
+sandbox:
+  enabled: true
+  namespace: spidey-exec
+  execServiceAccount: spidey-exec
+  image: ghcr.io/spideyman198/spidey-sandbox:0.14.0
+  # kubelet must enforce a per-pod PID cap on exec nodes (manifests cannot); set
+  # --pod-max-pids on that node pool. Documented here as an operator prerequisite.
+  podPidsLimitNote: "set kubelet --pod-max-pids on exec nodes"
+
+ingress:
+  enabled: true
+  className: nginx
+  host: spidey.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # SSE-aware: disable proxy buffering and extend read timeouts for the events
+    # stream so tokens flush immediately and long streams are not cut.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  tls:
+    enabled: true
+    secretName: spidey-tls
+
+# Deny-by-default NetworkPolicies: api↔db, worker↔db/qdrant, egress allow-list.
+networkPolicies:
+  enabled: true
+  # CIDRs the worker may reach for LLM providers + GitHub (egress allow-list).
+  egressAllowedCidrs:
+    - 0.0.0.0/0 # tighten to provider ranges in prod
+  dnsNamespace: kube-system
+
+# KEDA ScaledObjects (needs the KEDA operator + CRDs installed in-cluster).
+keda:
+  enabled: false
+  redisAddress: spidey-redis:6379
+
+# Prometheus Operator ServiceMonitor (needs the CRD installed).
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+
+# In-cluster single-replica databases — for a self-contained kind smoke test
+# ONLY. Never enable in production; use managed services instead.
+devDatabases:
+  enabled: false
+  postgres:
+    image: postgres:16-alpine
+    password: spidey
+  redis:
+    image: redis:7-alpine
+  qdrant:
+    image: qdrant/qdrant:v1.13.4

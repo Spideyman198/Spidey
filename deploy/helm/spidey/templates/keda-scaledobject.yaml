@@ -1,0 +1,27 @@
+{{- if .Values.keda.enabled }}
+{{- range .Values.worker.queues }}
+# Scale this queue's workers on Redis list depth — queue depth is the true load
+# signal, not CPU (ADR-0014). Requires the KEDA operator + CRDs in-cluster.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "spidey.fullname" $ }}-worker-{{ .name }}
+  labels:
+    {{- include "spidey.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: worker
+    spidey.dev/queue: {{ .name }}
+spec:
+  scaleTargetRef:
+    name: {{ include "spidey.fullname" $ }}-worker-{{ .name }}
+  minReplicaCount: {{ .keda.minReplicaCount }}
+  maxReplicaCount: {{ .keda.maxReplicaCount }}
+  triggers:
+    - type: redis
+      metadata:
+        address: {{ $.Values.keda.redisAddress | quote }}
+        listName: {{ .name | quote }}
+        listLength: {{ .keda.listLength | quote }}
+        enableTLS: "false"
+---
+{{- end }}
+{{- end }}

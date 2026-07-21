@@ -12,9 +12,9 @@ destructive action.**
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with pyright](https://img.shields.io/badge/pyright-strict-blue.svg)](https://microsoft.github.io/pyright/)
 
-> **Status:** M13 of 15 milestones complete — retrieval v2 adds an **eval-gated cross-encoder
-> reranker** and **context compression**. See the [roadmap](docs/04-milestones.md) and the
-> [changelog](CHANGELOG.md).
+> **Status:** M14 of 15 milestones complete — **Kubernetes/Helm & ops readiness**: a Helm chart, a
+> Kubernetes Jobs sandbox adapter, deny-by-default NetworkPolicies, and ops runbooks. See the
+> [roadmap](docs/04-milestones.md) and the [changelog](CHANGELOG.md).
 
 ## Why Spidey?
 
@@ -116,6 +116,12 @@ SPIDEY_BOOTSTRAP_PASSWORD='<a-strong-password>' \
 
 `make dev-min` starts the core services only; `make test lint typecheck security` runs the local
 quality gates. API docs: `http://localhost:8000/api/v1/docs` · Grafana: `:3000` · Jaeger: `:16686`.
+
+For Kubernetes, the Helm chart in [`deploy/helm/spidey`](deploy/helm/spidey) deploys the API (HPA),
+KEDA-scaled workers, the beat scheduler, a pre-upgrade migration hook, deny-by-default
+NetworkPolicies, and the locked-down namespace for the [Kubernetes Jobs sandbox](docs/12-deployment.md)
+— with ops [runbooks](docs/runbooks/) for deploy, backup/restore, rotation, incident response, and
+the cost kill-switch.
 
 ## Benchmarks
 

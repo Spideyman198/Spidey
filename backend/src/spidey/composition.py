@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from spidey.codeintel.domain import CompressionPolicy
 from spidey.codeintel.infrastructure import QdrantVectorIndex, TreeSitterParser
-from spidey.execution.infrastructure import DockerSandbox
+from spidey.execution.infrastructure import DockerSandbox, K8sJobConfig, K8sJobsSandbox
 from spidey.identity.infrastructure import (
     Argon2PasswordHasher,
     JwtTokenIssuer,
@@ -173,6 +173,32 @@ class Container:
     memory_vector_index: QdrantMemoryIndex
 
 
+def _build_sandbox(settings: Settings) -> Sandbox:
+    """Select the Sandbox adapter for the deployment target (ADR-0014).
+
+    ``docker`` drives the host Docker socket (v1, single-host); ``k8s`` runs one
+    hardened Job per execution. Same port, same policy — an infrastructure choice.
+    """
+    if settings.sandbox_backend == "k8s":
+        return K8sJobsSandbox(
+            config=K8sJobConfig(
+                image=settings.sandbox_image,
+                workspace_pvc_claim=settings.sandbox_k8s_workspace_pvc,
+                namespace=settings.sandbox_k8s_namespace,
+                service_account=settings.sandbox_k8s_service_account,
+                workspace_root=settings.sandbox_k8s_workspace_root,
+                run_uid=settings.sandbox_run_uid,
+                run_gid=settings.sandbox_run_uid,
+                image_pull_policy=settings.sandbox_k8s_image_pull_policy,
+            )
+        )
+    return DockerSandbox(
+        image=settings.sandbox_image,
+        run_uid=settings.sandbox_run_uid,
+        egress_proxy_network=settings.sandbox_egress_network,
+    )
+
+
 def build_container(settings: Settings) -> Container:
     """Construct all process-lifetime singletons. Called once at startup."""
     engine = create_database_engine(settings)
@@ -251,11 +277,7 @@ def build_container(settings: Settings) -> Container:
             max_cost_usd=settings.llm_budget_max_cost_usd,
             window_seconds=settings.llm_budget_window_seconds,
         ),
-        sandbox=DockerSandbox(
-            image=settings.sandbox_image,
-            run_uid=settings.sandbox_run_uid,
-            egress_proxy_network=settings.sandbox_egress_network,
-        ),
+        sandbox=_build_sandbox(settings),
         memory_vector_index=QdrantMemoryIndex(
             client=qdrant_client, dense_dim=settings.embedding_dim
         ),

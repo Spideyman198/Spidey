@@ -1,0 +1,80 @@
+name: Helm
+
+on:
+  push:
+    paths:
+      - 'deploy/helm/**'
+      - 'infra/policy/conftest/kubernetes.rego'
+      - '.github/workflows/helm.yml'
+  pull_request:
+    paths:
+      - 'deploy/helm/**'
+      - 'infra/policy/conftest/kubernetes.rego'
+      - '.github/workflows/helm.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  CHART: deploy/helm/spidey
+
+jobs:
+  lint:
+    name: helm lint · template · conftest
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: helm lint (defaults)
+        run: helm lint ${{ env.CHART }}
+      - name: helm lint (prod example)
+        run: helm lint ${{ env.CHART }} -f ${{ env.CHART }}/values-prod.example.yaml
+      - name: Install conftest
+        run: |
+          CONFTEST_VERSION=0.56.0
+          curl -sSfL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" \
+            | tar -xz conftest
+          sudo mv conftest /usr/local/bin/
+      - name: Render + policy-check manifests
+        run: |
+          helm template spidey ${{ env.CHART }} \
+            --set keda.enabled=true \
+            --set metrics.serviceMonitor.enabled=true > /tmp/manifests.yaml
+          conftest test --policy infra/policy/conftest/kubernetes.rego /tmp/manifests.yaml
+
+  kind-smoke:
+    name: kind install + smoke (self-contained)
+    runs-on: ubuntu-24.04
+    # Runs on demand: it builds the app image and stands up an ephemeral cluster
+    # with in-chart dev databases, then runs `helm test` (API health + a
+    # PSS-restricted sandbox pod). Enable as the M14 live exit criterion.
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build app image
+        run: docker build -f infra/Dockerfile.backend -t spidey:ci backend
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: spidey
+      - name: Load image into kind
+        run: kind load docker-image spidey:ci --name spidey
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - name: Install chart (dev databases, docker sandbox for CI simplicity)
+        run: |
+          helm install spidey ${{ env.CHART }} \
+            --set image.repository=spidey --set image.tag=ci --set image.pullPolicy=Never \
+            --set devDatabases.enabled=true \
+            --set config.SPIDEY_ENVIRONMENT=test \
+            --wait --timeout 5m
+      - name: Smoke test (API health + restricted sandbox pod)
+        run: helm test spidey --timeout 3m
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -A
+          kubectl describe pods -l app.kubernetes.io/part-of=spidey || true

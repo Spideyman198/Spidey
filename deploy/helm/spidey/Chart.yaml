@@ -1,0 +1,24 @@
+apiVersion: v2
+name: spidey
+description: |
+  Spidey — an autonomous coding agent platform. Deploys the API, per-queue
+  workers (KEDA-scaled on queue depth), the beat scheduler, a pre-upgrade
+  Alembic migration hook, deny-by-default NetworkPolicies, and a locked-down
+  execution namespace for the Kubernetes Jobs sandbox adapter (ADR-0014).
+type: application
+# Chart version tracks the milestone (0.MINOR.z); appVersion is the app image tag.
+version: 0.14.0
+appVersion: "0.14.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/Spideyman198/Spidey
+sources:
+  - https://github.com/Spideyman198/Spidey
+maintainers:
+  - name: Kenan Eliyan
+    url: https://github.com/Spideyman198
+keywords:
+  - ai-agents
+  - developer-tools
+  - code-generation
+annotations:
+  category: DeveloperTools

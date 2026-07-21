@@ -1,0 +1,74 @@
+{{- if .Values.sandbox.enabled }}
+# The locked-down namespace where the Kubernetes Jobs sandbox adapter runs
+# untrusted code (ADR-0014). Pod Security Standards "restricted" is enforced at
+# the namespace, so nothing privileged can ever schedule here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.sandbox.namespace }}
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.sandbox.execServiceAccount }}
+  namespace: {{ .Values.sandbox.namespace }}
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+# Deny-all: exec pods get no ingress and no egress. Untrusted code cannot reach
+# the API server, the databases, other pods, or the internet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Values.sandbox.namespace }}-deny-all
+  namespace: {{ .Values.sandbox.namespace }}
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+# The worker (in the release namespace) may manage exec Jobs and read their pods'
+# logs in this namespace — and nothing else. This is the whole cross-namespace
+# grant for the sandbox adapter.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "spidey.fullname" . }}-exec-runner
+  namespace: {{ .Values.sandbox.namespace }}
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "spidey.fullname" . }}-exec-runner
+  namespace: {{ .Values.sandbox.namespace }}
+  labels:
+    {{- include "spidey.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "spidey.fullname" . }}-exec-runner
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "spidey.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

@@ -1,0 +1,57 @@
+{{- range .Values.worker.queues }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "spidey.fullname" $ }}-worker-{{ .name }}
+  labels:
+    {{- include "spidey.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: worker
+    spidey.dev/queue: {{ .name }}
+spec:
+  replicas: {{ .replicas }}
+  selector:
+    matchLabels:
+      {{- include "spidey.selectorLabels" (dict "root" $ "component" "worker") | nindent 6 }}
+      spidey.dev/queue: {{ .name }}
+  template:
+    metadata:
+      labels:
+        {{- include "spidey.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: worker
+        spidey.dev/queue: {{ .name }}
+    spec:
+      serviceAccountName: {{ include "spidey.serviceAccountName" $ }}
+      # The worker DOES call the Kubernetes API — to create sandbox Jobs — so its
+      # token is mounted, scoped by the narrow Role in exec-rbac.yaml.
+      automountServiceAccountToken: true
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: worker
+          image: {{ include "spidey.image" $ }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command: ["celery", "-A", "spidey.workers.celery_app.app", "worker"]
+          args: ["--loglevel", "INFO", "--concurrency", "2", "-Q", {{ .name | quote }}]
+          envFrom:
+            {{- include "spidey.envFrom" $ | nindent 12 }}
+          resources:
+            {{- toYaml $.Values.worker.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: workspaces
+              mountPath: {{ $.Values.workspaces.mountPath }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: workspaces
+          persistentVolumeClaim:
+            claimName: {{ $.Values.workspaces.persistence.existingClaim | default ($.Values.config.SPIDEY_SANDBOX_K8S_WORKSPACE_PVC | default "spidey-workspaces") }}
+---
+{{- end }}

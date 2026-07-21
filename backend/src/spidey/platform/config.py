@@ -12,7 +12,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import (
     AnyHttpUrl,
@@ -203,6 +203,18 @@ class Settings(BaseSettings):
     sandbox_egress_network: str | None = Field(default=None)
     # Pre-authorize network installs for a run (default off: each is a human gate).
     sandbox_allow_network_installs: bool = Field(default=False)
+    # Sandbox adapter behind the Sandbox port (ADR-0014): "docker" (v1, host
+    # socket) or "k8s" (Jobs adapter, one hardened Job per execution). Selected
+    # by deployment target; agents and policy are identical either way.
+    sandbox_backend: Literal["docker", "k8s"] = Field(default="docker")
+    # Kubernetes Jobs sandbox (M14) — used only when sandbox_backend == "k8s".
+    # The chart provisions the locked-down exec namespace, its ServiceAccount, the
+    # deny-all NetworkPolicy, and the shared workspaces PVC.
+    sandbox_k8s_namespace: str = Field(default="spidey-exec")
+    sandbox_k8s_service_account: str = Field(default="spidey-exec")
+    sandbox_k8s_workspace_pvc: str = Field(default="spidey-workspaces")
+    sandbox_k8s_workspace_root: str = Field(default="/var/lib/spidey/workspaces")
+    sandbox_k8s_image_pull_policy: str = Field(default="IfNotPresent")
 
     otel_exporter_otlp_endpoint: AnyHttpUrl | None = None
     otel_service_name: str = Field(default="spidey", min_length=1)

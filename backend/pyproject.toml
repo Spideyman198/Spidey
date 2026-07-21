@@ -54,6 +54,8 @@ dependencies = [
   "psycopg[binary]>=3.3.4",
   # Execution sandbox (M9): Docker SDK behind the Sandbox port (ADR-0007)
   "docker>=7.1",
+  # Execution sandbox on Kubernetes (M14): Jobs adapter behind the same port
+  "kubernetes>=31.0",
 ]
 
 [dependency-groups]
