@@ -22,7 +22,9 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from spidey.codeintel.domain.compression import CompressionPolicy, compress_hits
 from spidey.codeintel.domain.models import CodeSearchResult, SearchHit
+from spidey.codeintel.domain.reranking import rerank_hits
 from spidey.platform.logging import get_logger
 
 if TYPE_CHECKING:
@@ -32,6 +34,7 @@ if TYPE_CHECKING:
     from spidey.codeintel.domain.ports import (
         DenseEmbedder,
         GraphNeighborhood,
+        Reranker,
         SparseEmbedder,
         SymbolLookup,
         VectorMatch,
@@ -44,6 +47,9 @@ _logger = get_logger("spidey.codeintel.search")
 _TERM_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
 # Pull more candidates than requested so the lexical boost has room to reorder.
 _OVERSAMPLE = 4
+# When a reranker is wired, pull a wider pool: the cross-encoder is the precision
+# stage, so give it more first-stage recall to reorder (M13, FR-2.7).
+_RERANK_OVERSAMPLE = 6
 _MAX_LIMIT = 50
 
 
@@ -86,12 +92,18 @@ class SearchService:
         sparse_embedder: SparseEmbedder,
         vector_index: VectorSearcher,
         graph_expander: GraphExpander | None = None,
+        reranker: Reranker | None = None,
+        rerank_blend: float = 0.7,
+        compression: CompressionPolicy | None = None,
     ) -> None:
         self._store = store
         self._dense = dense_embedder
         self._sparse = sparse_embedder
         self._vectors = vector_index
         self._graph_expander = graph_expander
+        self._reranker = reranker
+        self._rerank_blend = rerank_blend
+        self._compression = compression
 
     async def search(
         self, *, workspace_id: uuid.UUID, query: str, limit: int = 10
@@ -104,23 +116,37 @@ class SearchService:
 
         dense = self._dense.embed_query(query)
         sparse = self._sparse.embed_query(query)
+        oversample = _RERANK_OVERSAMPLE if self._reranker is not None else _OVERSAMPLE
         matches = await self._vectors.hybrid_search(
             workspace_id=workspace_id,
             dense=dense,
             sparse=sparse,
-            limit=limit * _OVERSAMPLE,
+            limit=limit * oversample,
         )
 
         hits = [self._to_hit(match, exact_names) for match in matches]
-        # Stable sort: promote exact-symbol hits, preserve RRF order within each
+        # Precision stage: a cross-encoder reranks the recall pool jointly on
+        # (query, chunk); the fusion is pure (domain.reranking). Off → unchanged.
+        hits = self._rerank(query, hits)
+        # Stable sort: promote exact-symbol hits, preserve rank order within each
         # group (Python sort is stable, so equal keys keep candidate order).
         hits.sort(key=lambda h: h.source != "symbol")
         hits = hits[:limit]
+        # Context compression is lossy, so it runs last and only when configured;
+        # provenance (path:lines) is recomputed to the kept window (domain).
+        if self._compression is not None and hits:
+            hits = compress_hits(hits, policy=self._compression, query=query)
 
         facts: list[str] = []
         if self._graph_expander is not None and hits:
             facts = await self._graph_expander.facts_for(workspace_id, hits)
         return CodeSearchResult(hits=hits, graph_facts=facts)
+
+    def _rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
+        if self._reranker is None or not hits:
+            return hits
+        scores = self._reranker.score(query=query, documents=[hit.content for hit in hits])
+        return rerank_hits(hits, scores, blend=self._rerank_blend)
 
     async def _exact_symbol_names(self, workspace_id: uuid.UUID, query: str) -> set[str]:
         terms = set(_TERM_RE.findall(query))

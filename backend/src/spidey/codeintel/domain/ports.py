@@ -151,6 +151,25 @@ class SparseEmbedder(Protocol):
     def embed_query(self, text: str) -> SparseVector: ...
 
 
+class Reranker(Protocol):
+    """Consumer-side port for cross-encoder reranking (M13, FR-2.7).
+
+    A reranker scores each candidate ``document`` for its relevance to ``query``
+    jointly (a cross-encoder attends to the pair), which orders results more
+    faithfully than the bi-encoder cosine the first-stage retriever uses. The
+    contract is pure and synchronous: given a query and ``n`` documents it
+    returns exactly ``n`` scores, aligned by index, higher meaning more relevant.
+    The scale is adapter-defined — the domain only compares scores within one
+    call — so an implementation may return logits, probabilities, or overlaps.
+
+    Defined here (not imported from ``llm``) so codeintel depends only on the
+    shape it needs; the ONNX cross-encoder adapter lives in ``llm`` beside the
+    embedders, keeping codeintel free of model loading (SEC — no direct file IO).
+    """
+
+    def score(self, *, query: str, documents: Sequence[str]) -> list[float]: ...
+
+
 class VectorRecord(BaseModel):
     """One chunk's vectors plus the payload the store returns on a hit.
 

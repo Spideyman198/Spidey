@@ -6,6 +6,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from spidey.codeintel.application import GraphExpander, SearchService
+from spidey.codeintel.domain import CompressionPolicy
 from spidey.codeintel.domain.models import (
     EdgeKind,
     GraphNeighbor,
@@ -103,8 +104,27 @@ def _match(header_path: str, score: float, *, suspect: bool = False) -> VectorMa
     )
 
 
+class FakeReranker:
+    """Scores a document 1.0 when it contains ``keyword``, else 0.0."""
+
+    def __init__(self, keyword: str) -> None:
+        self._keyword = keyword
+        self.docs_seen: list[str] = []
+
+    def score(self, *, query: str, documents: Sequence[str]) -> list[float]:
+        _ = query
+        self.docs_seen = list(documents)
+        return [1.0 if self._keyword in doc else 0.0 for doc in documents]
+
+
 def _service(
-    store: FakeStore, index: FakeVectorIndex, *, expander: GraphExpander | None = None
+    store: FakeStore,
+    index: FakeVectorIndex,
+    *,
+    expander: GraphExpander | None = None,
+    reranker: FakeReranker | None = None,
+    rerank_blend: float = 0.7,
+    compression: CompressionPolicy | None = None,
 ) -> SearchService:
     return SearchService(
         store=store,
@@ -112,6 +132,9 @@ def _service(
         sparse_embedder=FakeSparse(),
         vector_index=index,
         graph_expander=expander,
+        reranker=reranker,
+        rerank_blend=rerank_blend,
+        compression=compression,
     )
 
 
@@ -219,3 +242,78 @@ class TestGraphExpansion:
             workspace_id=WS, query="anything", limit=10
         )
         assert result.graph_facts == []
+
+
+class TestReranking:
+    async def test_reranker_reorders_the_pool(self) -> None:
+        # First stage ranks alpha above beta; the reranker prefers beta, so with
+        # a reranker-only blend beta must surface first.
+        matches = [_match("mod.alpha", 0.9), _match("mod.beta", 0.5)]
+        service = _service(
+            FakeStore(set()),
+            FakeVectorIndex(matches),
+            reranker=FakeReranker("beta"),
+            rerank_blend=1.0,
+        )
+        result = await service.search(workspace_id=WS, query="anything", limit=10)
+        assert [h.header_path for h in result.hits] == ["mod.beta", "mod.alpha"]
+
+    async def test_reranker_widens_the_candidate_pool(self) -> None:
+        matches = [_match(f"mod.f{i}", 1.0 - i / 100) for i in range(40)]
+        index = FakeVectorIndex(matches)
+        await _service(FakeStore(set()), index, reranker=FakeReranker("x")).search(
+            workspace_id=WS, query="query text", limit=5
+        )
+        assert index.limit_seen == 5 * 6  # rerank oversample factor (wider than 4)
+
+    async def test_symbol_promotion_survives_reranking(self) -> None:
+        # Even when the reranker scores the exact-symbol hit low, symbol promotion
+        # (applied after the rerank) still lifts it to the top.
+        matches = [_match("mod.alpha", 0.9), _match("mod.beta", 0.5)]
+        service = _service(
+            FakeStore({"beta"}),
+            FakeVectorIndex(matches),
+            reranker=FakeReranker("alpha"),
+            rerank_blend=1.0,
+        )
+        result = await service.search(workspace_id=WS, query="call beta", limit=10)
+        assert result.hits[0].header_path == "mod.beta"
+        assert result.hits[0].source == "symbol"
+
+
+class TestCompression:
+    @staticmethod
+    def _long_match(header_path: str, score: float) -> VectorMatch:
+        body = "\n".join(
+            ["# preamble", "noise line one", "noise line two", f"    return {header_path}_value"]
+        )
+        return VectorMatch(
+            path="app.py",
+            language=Language.PYTHON,
+            header_path=header_path,
+            kind=SymbolKind.FUNCTION,
+            start_line=10,
+            end_line=13,
+            content=body,
+            suspect=False,
+            score=score,
+        )
+
+    async def test_compression_trims_content_and_reanchors_lines(self) -> None:
+        match = self._long_match("mod.alpha", 0.9)
+        policy = CompressionPolicy(char_budget=10_000, per_hit_max_chars=10_000, context_lines=0)
+        service = _service(FakeStore(set()), FakeVectorIndex([match]), compression=policy)
+        result = await service.search(workspace_id=WS, query="alpha_value", limit=5)
+        hit = result.hits[0]
+        # Only the query-relevant line is kept, and provenance is re-anchored to it.
+        assert hit.content == "    return mod.alpha_value"
+        assert hit.start_line == 13
+        assert hit.end_line == 13
+
+    async def test_compression_stops_at_char_budget(self) -> None:
+        matches = [self._long_match(f"mod.f{i}", 1.0 - i / 100) for i in range(5)]
+        policy = CompressionPolicy(char_budget=1, per_hit_max_chars=10_000, context_lines=8)
+        service = _service(FakeStore(set()), FakeVectorIndex(matches), compression=policy)
+        result = await service.search(workspace_id=WS, query="return", limit=5)
+        # Budget of 1 char keeps only the first hit (never returns nothing).
+        assert len(result.hits) == 1

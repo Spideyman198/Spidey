@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from spidey.evaluation.domain import SuiteOutcome, Tier
 from spidey.evaluation.domain.retrieval import (
+    ndcg_at_k,
     precision_at_k,
     recall_at_k,
     reciprocal_rank,
@@ -59,12 +60,14 @@ class RetrievalEvalSuite:
         precisions: list[float] = []
         recalls: list[float] = []
         rrs: list[float] = []
+        ndcgs: list[float] = []
         failures: list[str] = []
 
         for case in self._cases:
             retrieved = list(self._retriever(case.query, self._k))
             precisions.append(precision_at_k(retrieved, case.relevant, self._k))
             recalls.append(recall_at_k(retrieved, case.relevant, self._k))
+            ndcgs.append(ndcg_at_k(retrieved, case.relevant, self._k))
             rr = reciprocal_rank(retrieved, case.relevant)
             rrs.append(rr)
             if rr == 0.0:
@@ -73,6 +76,7 @@ class RetrievalEvalSuite:
         metrics = {
             f"precision_at_{self._k}": round(fmean(precisions), 4),
             f"recall_at_{self._k}": round(fmean(recalls), 4),
+            f"ndcg_at_{self._k}": round(fmean(ndcgs), 4),
             "mrr": round(fmean(rrs), 4),
             "hit_rate": round(1.0 - len(failures) / len(self._cases), 4),
         }

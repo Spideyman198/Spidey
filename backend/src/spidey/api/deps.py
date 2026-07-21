@@ -133,6 +133,9 @@ def get_search_service(container: ContainerDep, session: SessionDep) -> SearchSe
         sparse_embedder=container.sparse_embedder,
         vector_index=container.vector_index,
         graph_expander=expander,
+        reranker=container.reranker,
+        rerank_blend=settings.rerank_blend,
+        compression=container.compression_policy,
     )
 
 

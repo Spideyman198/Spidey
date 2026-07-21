@@ -71,6 +71,9 @@ async def _run(run_id: uuid.UUID) -> None:
                         dense_embedder=container.dense_embedder,
                         sparse_embedder=container.sparse_embedder,
                         vector_index=container.vector_index,
+                        reranker=container.reranker,
+                        rerank_blend=container.settings.rerank_blend,
+                        compression=container.compression_policy,
                     ),
                     CodeEditProvider(storage=container.workspace_storage),
                     SandboxToolProvider(

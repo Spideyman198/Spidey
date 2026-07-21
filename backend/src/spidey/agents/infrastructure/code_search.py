@@ -18,7 +18,7 @@ from spidey.agents.domain.tools import (
     TrustTier,
 )
 from spidey.codeintel.application import GraphExpander, SearchService
-from spidey.codeintel.domain import frame_hits
+from spidey.codeintel.domain import CompressionPolicy, frame_hits
 from spidey.codeintel.infrastructure import PostgresGraphStore, PostgresSymbolStore
 from spidey.identity.domain.models import Role
 
@@ -27,7 +27,12 @@ if TYPE_CHECKING:
 
     from spidey.agents.domain.tools import ToolContext
     from spidey.codeintel.domain.models import CodeSearchResult
-    from spidey.codeintel.domain.ports import DenseEmbedder, SparseEmbedder, VectorSearcher
+    from spidey.codeintel.domain.ports import (
+        DenseEmbedder,
+        Reranker,
+        SparseEmbedder,
+        VectorSearcher,
+    )
 
 _TOOL = "codeintel.search"
 _MAX_LIMIT = 25
@@ -52,11 +57,17 @@ class CodeSearchProvider:
         dense_embedder: DenseEmbedder,
         sparse_embedder: SparseEmbedder,
         vector_index: VectorSearcher,
+        reranker: Reranker | None = None,
+        rerank_blend: float = 0.7,
+        compression: CompressionPolicy | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._dense = dense_embedder
         self._sparse = sparse_embedder
         self._vectors = vector_index
+        self._reranker = reranker
+        self._rerank_blend = rerank_blend
+        self._compression = compression
 
     @property
     def namespace(self) -> str:
@@ -98,6 +109,9 @@ class CodeSearchProvider:
                 sparse_embedder=self._sparse,
                 vector_index=self._vectors,
                 graph_expander=GraphExpander(graph=PostgresGraphStore(session)),
+                reranker=self._reranker,
+                rerank_blend=self._rerank_blend,
+                compression=self._compression,
             )
             result = await search.search(
                 workspace_id=context.workspace_id, query=query, limit=limit

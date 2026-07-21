@@ -20,6 +20,8 @@ from spidey.evaluation.domain.replay import (
 )
 from spidey.evaluation.domain.retrieval import (
     RetrievalCase,
+    dcg_at_k,
+    ndcg_at_k,
     precision_at_k,
     recall_at_k,
     reciprocal_rank,
@@ -44,9 +46,11 @@ __all__ = [
     "SuiteResult",
     "Tier",
     "benign_acceptance_rate",
+    "dcg_at_k",
     "diff_timeline",
     "groundedness_rate",
     "mean_cost_usd",
+    "ndcg_at_k",
     "poison_containment_rate",
     "precision_at_k",
     "recall_at_k",

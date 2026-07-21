@@ -8,12 +8,18 @@ from spidey.llm.infrastructure.fastembed_embedder import (
 )
 from spidey.llm.infrastructure.gemini_adapter import GeminiFactory
 from spidey.llm.infrastructure.openai_adapter import OpenAiCompatibleFactory
+from spidey.llm.infrastructure.reranker import (
+    CrossEncoderReranker,
+    LexicalOverlapReranker,
+)
 
 __all__ = [
     "AnthropicFactory",
+    "CrossEncoderReranker",
     "FastembedDenseEmbedder",
     "FastembedSparseEmbedder",
     "GeminiFactory",
+    "LexicalOverlapReranker",
     "OpenAiCompatibleFactory",
     "PostgresInteractionCapture",
     "RedisBudgetLedger",

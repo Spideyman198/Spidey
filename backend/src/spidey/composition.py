@@ -17,6 +17,7 @@ import redis.asyncio as aioredis
 from qdrant_client import AsyncQdrantClient
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from spidey.codeintel.domain import CompressionPolicy
 from spidey.codeintel.infrastructure import QdrantVectorIndex, TreeSitterParser
 from spidey.execution.infrastructure import DockerSandbox
 from spidey.identity.infrastructure import (
@@ -29,9 +30,11 @@ from spidey.llm.application import ProviderRegistry
 from spidey.llm.domain import ModelRef, ProviderName, Role, RouteConfig
 from spidey.llm.infrastructure import (
     AnthropicFactory,
+    CrossEncoderReranker,
     FastembedDenseEmbedder,
     FastembedSparseEmbedder,
     GeminiFactory,
+    LexicalOverlapReranker,
     OpenAiCompatibleFactory,
     RedisBudgetLedger,
     RedisResponseCache,
@@ -53,6 +56,7 @@ if TYPE_CHECKING:
     from spidey.codeintel.domain.ports import (
         DenseEmbedder,
         Parser,
+        Reranker,
         SparseEmbedder,
         VectorIndex,
     )
@@ -157,6 +161,8 @@ class Container:
     code_parser: Parser
     dense_embedder: DenseEmbedder
     sparse_embedder: SparseEmbedder
+    reranker: Reranker | None
+    compression_policy: CompressionPolicy | None
     qdrant_client: AsyncQdrantClient
     vector_index: VectorIndex
     stream_bus: StreamBus
@@ -185,6 +191,26 @@ def build_container(settings: Settings) -> Container:
         model_name=settings.sparse_embedding_model,
         cache_dir=cache_dir,
     )
+    # Retrieval v2 precision stage (M13). Model-free by default (deterministic,
+    # no download); an ONNX cross-encoder switches in when rerank_model is set.
+    reranker: Reranker | None = None
+    if settings.rerank_enabled:
+        reranker = (
+            CrossEncoderReranker(
+                model_name=settings.rerank_model,
+                cache_dir=cache_dir,
+                model_sha256=settings.rerank_model_sha256 or None,
+            )
+            if settings.rerank_model
+            else LexicalOverlapReranker()
+        )
+    compression_policy: CompressionPolicy | None = None
+    if settings.context_compression_enabled:
+        compression_policy = CompressionPolicy(
+            char_budget=settings.context_char_budget,
+            per_hit_max_chars=settings.context_per_hit_max_chars,
+            context_lines=settings.context_window_lines,
+        )
     http_client = create_http_client()
     return Container(
         settings=settings,
@@ -208,6 +234,8 @@ def build_container(settings: Settings) -> Container:
         code_parser=TreeSitterParser(),
         dense_embedder=dense_embedder,
         sparse_embedder=sparse_embedder,
+        reranker=reranker,
+        compression_policy=compression_policy,
         qdrant_client=qdrant_client,
         vector_index=QdrantVectorIndex(
             client=qdrant_client,

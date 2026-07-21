@@ -166,3 +166,16 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   rendered as **text/code only** (never HTML). Ships a strict **CSP** (no `unsafe-inline`), a
   frontend CI job (typecheck · ESLint · Vitest · build · dependency audit), and a Playwright e2e
   scaffold (runs against the fixture-LLM stack in CI). Backend and frontend gates are both green.
+- M13 retrieval v2 & performance (eval-gated): a **cross-encoder reranker** as the precision stage
+  over the first-stage (dense + sparse RRF) recall pool, and **extractive context compression** that
+  trims hits to their query-relevant window under a character budget. Both are **pure-domain**
+  (`rerank_hits`, `compress_hits`) and feature-flagged; the ONNX cross-encoder adapter lives in
+  `llm` beside the embedders (so `codeintel` stays free of model loading) and is **hash-pinned** —
+  a mismatched model artifact fails closed. A model-free lexical reranker is the deterministic
+  default. A **rerank ablation suite** grades reranked vs first-stage ordering on **NDCG@k**/**MRR**
+  and passes only when reranking does not regress — the genuine adopt/reject gate. Compression
+  re-anchors each hit's `path:lines` provenance to the kept window. A **profiling harness**
+  (`scripts/profile_retrieval.py`) measures the added CPU stages at **< 3 ms p95** combined, so the
+  v2 features are negligible against the NFR-2 search budget. Reports: the
+  [ablation/adopt decision](docs/perf/m13-retrieval-v2-eval.md) and the
+  [performance & NFR-2 verification](docs/perf/m13-retrieval-perf.md).

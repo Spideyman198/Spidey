@@ -1,3 +1,4 @@
+from spidey.codeintel.domain.compression import CompressionPolicy, compress_hits
 from spidey.codeintel.domain.framing import frame_hits
 from spidey.codeintel.domain.languages import (
     EXTENSION_LANGUAGE,
@@ -26,6 +27,7 @@ from spidey.codeintel.domain.ports import (
     GraphNeighborhood,
     GraphStore,
     Parser,
+    Reranker,
     SourceReader,
     SparseEmbedder,
     SymbolLookup,
@@ -35,11 +37,13 @@ from spidey.codeintel.domain.ports import (
     VectorRecord,
     VectorSearcher,
 )
+from spidey.codeintel.domain.reranking import rerank_hits
 
 __all__ = [
     "EXTENSION_LANGUAGE",
     "CodeChunk",
     "CodeSearchResult",
+    "CompressionPolicy",
     "DenseEmbedder",
     "EdgeKind",
     "GraphEdge",
@@ -55,6 +59,7 @@ __all__ = [
     "ParsedUnit",
     "Parser",
     "Reference",
+    "Reranker",
     "SearchHit",
     "SourceReader",
     "SparseEmbedder",
@@ -66,6 +71,8 @@ __all__ = [
     "VectorMatch",
     "VectorRecord",
     "VectorSearcher",
+    "compress_hits",
     "frame_hits",
     "language_for_path",
+    "rerank_hits",
 ]

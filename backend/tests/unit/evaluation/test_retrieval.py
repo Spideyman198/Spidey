@@ -6,6 +6,8 @@ from spidey.evaluation.application import RetrievalEvalSuite
 from spidey.evaluation.domain import (
     RetrievalCase,
     Tier,
+    dcg_at_k,
+    ndcg_at_k,
     precision_at_k,
     recall_at_k,
     reciprocal_rank,
@@ -34,6 +36,26 @@ class TestMetrics:
 
     def test_reciprocal_rank_zero_when_absent(self) -> None:
         assert reciprocal_rank(["x", "y"], {"a"}) == 0.0
+
+    def test_ndcg_is_one_for_ideal_order(self) -> None:
+        assert ndcg_at_k(["a", "b", "x"], {"a", "b"}, 3) == 1.0
+
+    def test_ndcg_rewards_higher_ranked_relevant_hits(self) -> None:
+        # Same relevant set, better position → strictly higher NDCG. This is the
+        # signal reranking moves that precision@k (position-blind) does not.
+        good = ndcg_at_k(["a", "x", "y"], {"a"}, 3)
+        worse = ndcg_at_k(["x", "y", "a"], {"a"}, 3)
+        assert good == 1.0
+        assert worse < good
+
+    def test_ndcg_no_relevant_is_vacuously_ideal(self) -> None:
+        assert ndcg_at_k(["x", "y"], set(), 3) == 1.0
+
+    def test_dcg_discounts_by_log_rank(self) -> None:
+        # One relevant at rank 2 → 1/log2(3).
+        from math import log2
+
+        assert dcg_at_k(["x", "a"], {"a"}, 5) == 1.0 / log2(3)
 
 
 def _retriever(table: dict[str, list[str]]):

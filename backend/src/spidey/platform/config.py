@@ -149,6 +149,27 @@ class Settings(BaseSettings):
     graph_expansion_seeds: int = Field(default=5, ge=1, le=50)
     graph_expansion_max_facts: int = Field(default=15, ge=1, le=100)
 
+    # ── Retrieval v2: reranking & context compression (codeintel, M13) ─────────
+    # Cross-encoder reranking is the precision stage over the first-stage recall
+    # pool. Adopted per the M13 ablation (docs/perf/m13-retrieval-v2-eval). With
+    # no rerank_model configured the wiring uses the deterministic model-free
+    # lexical reranker; setting a model switches to the ONNX cross-encoder.
+    rerank_enabled: bool = Field(default=True)
+    rerank_model: str = Field(default="")
+    # SHA-256 of the ONNX artifact; when set it is verified before first use so a
+    # swapped model fails closed (supply-chain integrity). Empty → unpinned+warn.
+    rerank_model_sha256: str = Field(default="")
+    # Blend of reranker vs first-stage score (1.0 = reranker only, 0.0 = RRF only).
+    rerank_blend: float = Field(default=0.7, ge=0.0, le=1.0)
+    # Context compression (lossy): trim hits to their query-relevant window under
+    # a character budget. Off by default — enabled under token pressure; the
+    # ablation records its recall cost. Budgets bound the assembled retrieval
+    # context that reaches a prompt.
+    context_compression_enabled: bool = Field(default=False)
+    context_char_budget: int = Field(default=6000, ge=256, le=200_000)
+    context_per_hit_max_chars: int = Field(default=1200, ge=64, le=50_000)
+    context_window_lines: int = Field(default=8, ge=1, le=200)
+
     # ── LLM gateway (llm context, M6) ─────────────────────────────────────────
     # Provider credentials. Absent → that provider is simply not registered; a
     # role routed only to it fails fast rather than degrading silently.

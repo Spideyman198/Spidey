@@ -12,8 +12,9 @@ destructive action.**
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with pyright](https://img.shields.io/badge/pyright-strict-blue.svg)](https://microsoft.github.io/pyright/)
 
-> **Status:** M12 of 15 milestones complete — the platform now has a **web UI**. See the
-> [roadmap](docs/04-milestones.md) and the [changelog](CHANGELOG.md).
+> **Status:** M13 of 15 milestones complete — retrieval v2 adds an **eval-gated cross-encoder
+> reranker** and **context compression**. See the [roadmap](docs/04-milestones.md) and the
+> [changelog](CHANGELOG.md).
 
 ## Why Spidey?
 
@@ -37,7 +38,7 @@ actions are reversible by default, so the system is safe to point at real, untru
 - ✓ **Multi-agent runtime** — Planner · Coder · Reviewer · Tester · Debugger · Documenter on LangGraph, durable and resumable
 - ✓ **Sandboxed execution** — untrusted commands and tests in hardened, network-isolated containers
 - ✓ **Human approval gates** — durable interrupts on every destructive action, fully audited
-- ✓ **Code intelligence** — Tree-sitter parsing + hybrid dense/BM25/knowledge-graph retrieval
+- ✓ **Code intelligence** — Tree-sitter parsing + hybrid dense/BM25/knowledge-graph retrieval, with an eval-gated cross-encoder reranker + context compression
 - ✓ **Long-term memory** — typed, attributed, scope-isolated recall behind a fact-only write gate
 - ✓ **Event-driven & replayable** — transactional outbox → Redis Streams → SSE; deterministic replay
 - ✓ **MCP tool plane** — serves and mounts Model Context Protocol tools with trust tiers and pinning
@@ -60,7 +61,10 @@ actions are reversible by default, so the system is safe to point at real, untru
   may run at all. → [Security](docs/11-security.md)
 - **Code intelligence** — Tree-sitter parsing across six languages (Python, JavaScript, TypeScript,
   Go, Java, Rust) feeds a hybrid retriever — dense embeddings + BM25 + a Postgres-backed knowledge
-  graph — with incremental re-indexing on change. → [Retrieval](docs/06-retrieval.md)
+  graph — with incremental re-indexing on change. A precision stage adds an **eval-gated
+  cross-encoder reranker** (ONNX, hash-pinned) and provenance-exact **context compression**, adopted
+  only where the retrieval ablation shows the win. → [Retrieval](docs/06-retrieval.md) ·
+  [v2 ablation](docs/perf/m13-retrieval-v2-eval.md)
 - **Tool plane (MCP)** — A single `ToolRegistry` choke point enforces RBAC, JSON-Schema validation,
   side-effect gating, and output sanitization. Spidey serves its own tools over MCP and mounts
   external MCP servers with trust tiers and definition pinning. → [Tool plane & MCP](docs/05-tooling-and-mcp.md)
