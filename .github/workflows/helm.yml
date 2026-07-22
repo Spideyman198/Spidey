@@ -24,8 +24,8 @@ jobs:
     name: helm lint · template · conftest
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
         with:
           version: v3.16.3
       - name: helm lint (defaults)
@@ -53,7 +53,7 @@ jobs:
     # PSS-restricted sandbox pod). Enable as the M14 live exit criterion.
     if: github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build app image
         run: docker build -f infra/Dockerfile.backend -t spidey:ci backend
       - uses: helm/kind-action@v1
@@ -61,7 +61,7 @@ jobs:
           cluster_name: spidey
       - name: Load image into kind
         run: kind load docker-image spidey:ci --name spidey
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
         with:
           version: v3.16.3
       - name: Install chart (dev databases, docker sandbox for CI simplicity)

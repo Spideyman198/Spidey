@@ -18,7 +18,7 @@ jobs:
     name: Markdown lint
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Invoked directly (not via the wrapper action) so CI, pre-commit, and
       # `make docs` share ONE explicit version — the wrapper's bundled linter
       # drifted ahead of local (new MD060 rule) and broke main. Bump all three
@@ -30,7 +30,7 @@ jobs:
     name: Internal link check
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: lycheeverse/lychee-action@v2
         with:
           # Offline: validate repo-internal links only. External links rot on
@@ -44,8 +44,8 @@ jobs:
     defaults:
       run: { working-directory: backend }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with: { python-version: "3.12" }
       - run: uv sync --group dev
       - name: Exported spec must match the committed spec
