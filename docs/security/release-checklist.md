@@ -40,9 +40,11 @@ by the owner**.
 - [x] Version bumped to `1.0.0` (`backend/pyproject.toml`, chart `appVersion`).
 - [x] `CHANGELOG.md` finalized: `[1.0.0]` section dated, links updated.
 - [x] `README.md` status → v1.0.
-- [ ] **Owner action**: tag `v1.0.0` (`git tag -s v1.0.0 && git push --tags`) — the
-      [release workflow](../../.github/workflows/release.yml) builds, SBOMs, signs,
-      and drafts the GitHub release.
+- [ ] **Owner action**: tag `v1.0.0` (`git tag -a v1.0.0 -m "Spidey v1.0.0" && git push origin v1.0.0`)
+      — the [release workflow](../../.github/workflows/release.yml) builds, SBOMs,
+      **Cosign-signs the artifacts** (keyless via GitHub OIDC), and drafts the release.
+      A GPG/SSH-signed tag (`-s`) is optional and requires a signing key configured
+      locally; it does not affect the artifact signing above.
 - [ ] **Owner action**: review the drafted release notes and **publish**.
 
 The two unchecked items are the owner's by design — Spidey never tags, pushes, or
