@@ -27,31 +27,36 @@ export function LoginPage() {
   }
 
   return (
-    <div className="main" style={{ maxWidth: 360, margin: '80px auto' }}>
-      <h1>🕷️ Spidey</h1>
-      <form className="panel" onSubmit={onSubmit}>
-        <label>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label style={{ display: 'block', marginTop: 12 }}>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
-        {error && (
-          <p className="muted" style={{ color: 'var(--red)' }} role="alert">
-            {error}
-          </p>
-        )}
-        <button className="primary" type="submit" disabled={busy} style={{ marginTop: 16 }}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+    <div className="center">
+      <div className="card">
+        <h1 style={{ textAlign: 'center' }}>🕷️ Spidey</h1>
+        <p className="muted" style={{ textAlign: 'center', marginTop: -6, marginBottom: 20 }}>
+          Sign in to your workspace
+        </p>
+        <form onSubmit={onSubmit}>
+          {error && (
+            <div className="banner" role="alert">
+              {error}
+            </div>
+          )}
+          <div className="field">
+            <label>Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div className="field">
+            <label>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button className="primary" type="submit" disabled={busy} style={{ width: '100%' }}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

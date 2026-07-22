@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook co-located by design */
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { api, getToken, setToken } from '../../api/client';
 
@@ -13,6 +13,14 @@ const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authenticated, setAuthenticated] = useState<boolean>(getToken() !== null);
+
+  // The client fires this when a request 401s with a token present (expired
+  // session) — drop to the login screen instead of a broken authenticated shell.
+  useEffect(() => {
+    const onUnauthorized = () => setAuthenticated(false);
+    window.addEventListener('spidey:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('spidey:unauthorized', onUnauthorized);
+  }, []);
 
   const value = useMemo<AuthValue>(
     () => ({

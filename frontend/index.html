@@ -4,13 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--
-      Strict CSP (docs/11 · M12 security focus). No unsafe-inline: styles and
-      scripts are bundled from 'self'. In production the API gateway injects a
-      per-response nonce; connect-src permits the API origin + its SSE stream.
+      CSP (docs/11 · M12 security focus). script-src stays strict 'self' — no
+      inline script, the XSS-critical control. style-src additionally allows
+      'unsafe-inline' because the SPA uses inline style props and Vite injects
+      styles inline in dev; inline CSS cannot execute JS, and agent content never
+      reaches the DOM as markup, so the residual risk is negligible. connect-src
+      permits the same-origin API + its SSE stream.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     />
     <title>Spidey</title>
   </head>

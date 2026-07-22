@@ -66,6 +66,43 @@ export interface Memory {
   created_at: string;
 }
 
+export type RepositorySource = 'local' | 'github';
+export type WorkspaceStatus = 'pending' | 'ingesting' | 'ready' | 'failed';
+
+export interface Workspace {
+  id: string;
+  owner_id: string;
+  name: string;
+  source: RepositorySource;
+  location: string;
+  branch: string | null;
+  status: WorkspaceStatus;
+  head_commit: string | null;
+  size_bytes: number;
+  file_count: number;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateWorkspaceInput {
+  name: string;
+  source: RepositorySource;
+  location: string;
+  branch?: string | null;
+  token?: string | null;
+}
+
+export type Role = 'admin' | 'developer' | 'viewer';
+
+export interface User {
+  id: string;
+  email: string;
+  role: Role;
+  is_active: boolean;
+  created_at: string;
+}
+
 // A domain event as delivered over SSE or read from the timeline endpoint. The
 // payload is untyped-per-event JSON; the reducer narrows it by `event_type`.
 export interface RunEvent {

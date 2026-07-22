@@ -12,7 +12,7 @@ rendering of agent-produced content, CSP, and the frontend supply chain · **Ver
 | Control (requirement) | Implementation | Verification |
 | --- | --- | --- |
 | Agent output is text/code, never markup | All run/agent content (timeline detail, diffs, plan titles, memory content) is rendered through React text nodes; no `dangerouslySetInnerHTML` anywhere | `DiffViewer` / `Timeline` render text nodes; grep: no `dangerouslySetInnerHTML` in `src/` |
-| No inline script or style | Strict CSP `script-src 'self'; style-src 'self'` with no `unsafe-inline`; Vite bundles all JS/CSS from `'self'` | `index.html` CSP meta; production build emits external assets only |
+| No inline script | Strict CSP `script-src 'self'` with no `unsafe-inline` — the XSS-critical control; Vite bundles all JS from `'self'`. `style-src` additionally allows `'unsafe-inline'` for the SPA's inline style props (inline CSS cannot execute JS) | `index.html` CSP meta; production build emits external JS |
 | JWT never in the URL | The token rides the `Authorization` header on every request, including SSE — which is consumed via a **fetch stream** (not `EventSource`, which cannot set headers) | `client.ts` `streamRunEvents`; no token in any query string |
 | Token at rest is scoped and revocable | Held in `localStorage` under one key; `logout` clears it; a 401 surfaces as an error, not a silent retry loop | `AuthContext` / `client.ts` |
 | SSE authorizes per run | The stream endpoint is owner-checked server-side (M6); a non-owner sees the run as not found | backend `/runs/{id}/events` owner guard (carried) |
@@ -28,9 +28,11 @@ rendering of agent-produced content, CSP, and the frontend supply chain · **Ver
 - **SSE over fetch, not EventSource.** `EventSource` cannot carry an `Authorization` header, which
   tempts putting the token in the URL (where it lands in logs and history). The fetch-stream reader
   keeps the token in the header and the URL clean.
-- **CSP is strict by construction.** Because Vite emits external bundles and the app uses no inline
-  handlers, `script-src 'self'` with no `unsafe-inline` holds without workarounds; the production
-  gateway adds a per-response nonce on top.
+- **CSP keeps `script-src` strict.** `script-src 'self'` with no `unsafe-inline` holds without
+  workarounds (Vite emits external JS, no inline handlers) — that is the XSS-critical control. Only
+  `style-src` allows `'unsafe-inline'`, needed by the SPA's inline style props and Vite's dev
+  injection; inline CSS cannot run JS, and agent content never reaches the DOM as markup, so the
+  residual risk is negligible. The production gateway can add a per-response nonce on top.
 - **Strict TypeScript is a safety net.** `strict`, `noUncheckedIndexedAccess`, and
   `exactOptionalPropertyTypes` catch a class of undefined-access bugs before they reach the browser.
 

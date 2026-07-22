@@ -2,7 +2,18 @@
 // every request. SSE is consumed via a fetch stream (not EventSource) so the
 // token travels in the Authorization header, never in the URL (docs/11 privacy).
 
-import type { Approval, Memory, Plan, Run, RunEvent, RunReport } from './types';
+import type {
+  Approval,
+  CreateWorkspaceInput,
+  Memory,
+  Plan,
+  Role,
+  Run,
+  RunEvent,
+  RunReport,
+  User,
+  Workspace,
+} from './types';
 
 const BASE = '/api/v1';
 const TOKEN_KEY = 'spidey.token';
@@ -39,6 +50,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const text = await response.text();
   const data = text ? JSON.parse(text) : undefined;
   if (!response.ok) {
+    // An expired/invalid session on an authenticated request: clear the token
+    // and let the app fall back to login instead of a dead authenticated shell.
+    if (response.status === 401 && token) {
+      setToken(null);
+      window.dispatchEvent(new Event('spidey:unauthorized'));
+    }
     const detail = data?.detail ?? data?.message ?? response.statusText;
     throw new ApiError(response.status, typeof detail === 'string' ? detail : 'request failed');
   }
@@ -60,6 +77,24 @@ export const api = {
   logout(): void {
     setToken(null);
   },
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+
+  me: () => request<User>('/users/me'),
+  listUsers: () => request<User[]>('/users'),
+  createUser: (email: string, password: string, role: Role) =>
+    request<User>('/users', { method: 'POST', body: JSON.stringify({ email, password, role }) }),
+  deleteUser: (id: string) => request<void>(`/users/${id}`, { method: 'DELETE' }),
+
+  listWorkspaces: () => request<Workspace[]>('/workspaces'),
+  getWorkspace: (id: string) => request<Workspace>(`/workspaces/${id}`),
+  createWorkspace: (input: CreateWorkspaceInput) =>
+    request<Workspace>('/workspaces', { method: 'POST', body: JSON.stringify(input) }),
+  reingestWorkspace: (id: string) =>
+    request<Workspace>(`/workspaces/${id}/ingest`, { method: 'POST' }),
 
   listRuns: () => request<Run[]>('/runs'),
   getRun: (id: string) => request<Run>(`/runs/${id}`),

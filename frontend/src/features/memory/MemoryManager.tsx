@@ -27,37 +27,60 @@ export function MemoryManager() {
     if (content.trim()) remember.mutate();
   }
 
+  const items = memories.data ?? [];
+
   return (
     <div>
-      <h2>Memory</h2>
-      <form className="panel" onSubmit={onSubmit}>
+      <div className="section-head">
+        <h2>Memory</h2>
+      </div>
+      <form className="panel stack" onSubmit={onSubmit}>
+        {error && (
+          <div className="banner" role="alert">
+            {error}
+          </div>
+        )}
         <div className="row">
           <input
             placeholder="Teach a fact (screened by the write gate)…"
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
-          <button className="primary" type="submit" disabled={remember.isPending}>
+          <button className="primary" type="submit" disabled={remember.isPending || !content.trim()}>
             Remember
           </button>
         </div>
-        {error && (
-          <p style={{ color: 'var(--red)' }} role="alert">
-            {error}
-          </p>
-        )}
       </form>
 
-      {memories.data?.length === 0 && <p className="muted">No memories yet.</p>}
-      {memories.data?.map((memory) => (
-        <div className="panel row" key={memory.id} style={{ justifyContent: 'space-between' }}>
-          <span>
-            <span className="badge">{memory.kind}</span> {memory.content}{' '}
-            <span className="muted">· confidence {memory.confidence.toFixed(2)}</span>
-          </span>
-          <button onClick={() => remove.mutate(memory.id)}>Delete</button>
+      {memories.isLoading && (
+        <p className="muted">
+          <span className="spinner" /> Loading…
+        </p>
+      )}
+      {!memories.isLoading && items.length === 0 && (
+        <div className="panel empty">
+          <span className="ico">🧠</span>
+          No memories yet. Teach a durable fact, or let runs distill their own.
         </div>
-      ))}
+      )}
+      {items.length > 0 && (
+        <div className="panel">
+          {items.map((memory) => (
+            <div className="list-row" key={memory.id}>
+              <div>
+                <div className="title">{memory.content}</div>
+                <div className="sub">
+                  <span className="badge">{memory.kind}</span> confidence{' '}
+                  {memory.confidence.toFixed(2)} · used {memory.use_count}×
+                </div>
+              </div>
+              <button className="danger sm" onClick={() => remove.mutate(memory.id)}>
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
