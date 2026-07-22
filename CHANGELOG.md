@@ -3,10 +3,12 @@
 All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
-adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Pre-1.0, each completed
-milestone bumps the minor version (`0.MINOR.z` = milestone number).
+adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Milestones M0–M15 built up
+to v1.0; each is captured below.
 
 ## [Unreleased]
+
+## [1.0.0] — 2026-07-22
 
 ### Added
 
@@ -194,3 +196,16 @@ milestone bumps the minor version (`0.MINOR.z` = milestone number).
   sandbox-security) + Prometheus **alert rules**, and a **load-test** harness
   (`scripts/loadtest.py`). Validated locally with helm 3.16 (lint + template) and conftest 0.56
   (252 checks); the kind install + `helm test` smoke is a dispatchable CI job.
+- M15 security hardening, supply chain & v1.0: a **SEC-\* verification matrix** mapping every one of
+  the 13 security requirements to its control and the test(s) that prove it, all green in CI; a
+  **dependency-license gate** (`scripts/check_licenses.py` — allow-list of permissive + weak
+  copyleft, deny GPL/AGPL/SSPL, fail-closed on unknowns; 186 backend deps pass) plus a frontend
+  `license-checker` step; **CodeQL** extended to javascript-typescript (closing the frontend gap);
+  a final **threat-model review** with an eight-item [residual-risk register](docs/security/threat-model-residual-risk.md)
+  (no blocking risk); a **success-criteria evidence** record (end-to-end delivery, booby-trapped-repo
+  containment, eval-harness-in-CI); and a signed **release checklist**. The release flow (SBOM +
+  Cosign keyless signing, owner-published draft) is confirmed. Version bumped to **1.0.0**.
+  Reports: [SEC-\* matrix](docs/security/sec-verification-matrix.md),
+  [license policy](docs/security/license-policy.md),
+  [success criteria](docs/security/success-criteria.md),
+  [release checklist](docs/security/release-checklist.md).

@@ -69,6 +69,30 @@ jobs:
           uv export --frozen --no-emit-project --format requirements.txt -o requirements-audit.txt
           uv run --with pip-audit pip-audit -r requirements-audit.txt --strict
 
+  licenses:
+    name: Dependency license compliance (SEC-SUP)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { python-version: "3.12" }
+      - name: Backend license gate (allow-list policy)
+        working-directory: backend
+        run: |
+          uv sync --group dev
+          uv run --with pip-licenses pip-licenses --format=json > licenses.json
+          uv run python ../scripts/check_licenses.py licenses.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend license gate (fail on strong copyleft)
+        working-directory: frontend
+        run: |
+          npm ci
+          npx --yes license-checker --production --failOn 'GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0;SSPL-1.0'
+
   containers-and-config:
     name: Trivy (filesystem + IaC)
     runs-on: ubuntu-24.04

@@ -12,8 +12,9 @@ destructive action.**
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with pyright](https://img.shields.io/badge/pyright-strict-blue.svg)](https://microsoft.github.io/pyright/)
 
-> **Status:** M14 of 15 milestones complete — **Kubernetes/Helm & ops readiness**: a Helm chart, a
-> Kubernetes Jobs sandbox adapter, deny-by-default NetworkPolicies, and ops runbooks. See the
+> **Status:** **v1.0** — all 15 milestones (M0–M15) complete. Security hardened and supply-chain
+> gated (SBOM + Cosign signing, license gate, [SEC-\* verification matrix](docs/security/sec-verification-matrix.md),
+> [residual-risk register](docs/security/threat-model-residual-risk.md)). See the
 > [roadmap](docs/04-milestones.md) and the [changelog](CHANGELOG.md).
 
 ## Why Spidey?

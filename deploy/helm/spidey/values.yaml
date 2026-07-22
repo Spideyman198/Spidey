@@ -124,7 +124,7 @@ sandbox:
   enabled: true
   namespace: spidey-exec
   execServiceAccount: spidey-exec
-  image: ghcr.io/spideyman198/spidey-sandbox:0.14.0
+  image: ghcr.io/spideyman198/spidey-sandbox:1.0.0
   # kubelet must enforce a per-pod PID cap on exec nodes (manifests cannot); set
   # --pod-max-pids on that node pool. Documented here as an operator prerequisite.
   podPidsLimitNote: "set kubelet --pod-max-pids on exec nodes"

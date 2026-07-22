@@ -7,7 +7,7 @@
 
 image:
   repository: ghcr.io/spideyman198/spidey
-  tag: "0.14.0" # pin by immutable tag or digest in prod
+  tag: "1.0.0" # pin by immutable tag or digest in prod
   pullPolicy: IfNotPresent
 
 config:
